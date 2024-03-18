@@ -37,3 +37,6 @@ Seg_pvt = pd.pivot_table(SegCrashData[['MAN COLL CD','SEVERITY CD']], index='MAN
 
 Int_pct = Int_pvt/TC_Int
 Seg_pct = Seg_pvt/TC_Seg
+
+print(Int_pct.to_string())
+print(Seg_pct.to_string())
