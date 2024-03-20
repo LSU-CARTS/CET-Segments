@@ -133,7 +133,7 @@ def dummy_wrapper(df):
 
 
 if __name__ == "__main__":
-    doc_string = "C:/Users/malle72/projects/CAT Scan/077-05_17-19.xlsx"
+    doc_string = "077-05_17-19.xlsx"
     df = pd.read_excel(doc_string)
     df = conversion(df)
     df = dummy_wrapper(df)
