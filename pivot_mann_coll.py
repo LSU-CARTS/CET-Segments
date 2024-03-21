@@ -100,6 +100,27 @@ def manner_severity_percents(df):
 
     return round(pvt, 4)
 
+def filler(df):
+    """
+    For any crash types or manners of collision that may not have occurred in the data, ensure there is a binary column
+    for it.
+    :param df: crash data
+    :return: dataframe with any columns left out by dummy function.
+    """
+    # All Crash Types
+    ct_list = ['ct_A','ct_B','ct_C','ct_D','ct_E','ct_F','ct_G','ct_H','ct_J','ct_K','ct_M','ct_N','ct_P','ct_Q','ct_R','ct_S','ct_T','ct_X']
+    # All Manners of Collision
+    mann_coll_list = ['Mann_Coll_A', 'Mann_Coll_B', 'Mann_Coll_C', 'Mann_Coll_D', 'Mann_Coll_E', 'Mann_Coll_F', 'Mann_Coll_G', 'Mann_Coll_H', 'Mann_Coll_I', 'Mann_Coll_J', 'Mann_Coll_K', 'Mann_Coll_Z']
+    for i in ct_list:
+        if i not in df.columns:
+            df[i] = 0
+    for j in mann_coll_list:
+        if j not in df.columns:
+            df[j] = 0
+
+    return df
+
+
 def dummy_wrapper(df):
     """
     Wrapper function that gets the dummy variables for the Road Surface, Lighting, and Manner of Collision.
@@ -119,17 +140,55 @@ def dummy_wrapper(df):
     light_dummies = df['LightCondition'].apply(dummies, args=[light_dummy_vals,light_dummy_cols])
     light_result = pd.concat(light_dummies.tolist(), ignore_index=True)
 
+    # custom dummies for Manner Collision
+    mann_coll_vals = [['E','F','G'], ['H','I'], ['J','K']]
+    mann_coll_cols = ['Left turn', 'Right turn', 'Sideswipe']
+    mann_coll_dummies = df['OldMannerCollisionCode'].apply(dummies, args=[mann_coll_vals,mann_coll_cols])
+    mann_coll_result = pd.concat(mann_coll_dummies.tolist(), ignore_index=True)
+
     # get dummies for Manner Collision
     df = pd.get_dummies(df,columns=['OldMannerCollisionCode'], prefix='Mann_Coll')  # Can just use regular pandas dummy func for this
 
-    dummy_result = pd.merge(surf_result, light_result, left_index=True, right_index=True)  # combine dummy dfs
-    df_out = pd.merge(df, dummy_result, left_index=True, right_index=True)  # add dummy df to output df
+    df = pd.get_dummies(df, columns=['Crash_Type'], prefix='ct')
+
+    # dummy_result = pd.merge(surf_result, light_result, left_index=True, right_index=True)  # combine dummy dfs
+    # df_out = pd.merge(df, dummy_result, left_index=True, right_index=True)  # add dummy df to output df
+    df_out = pd.concat(objs=[df,surf_result,light_result,mann_coll_result],axis=1)  # combine all dummy fields + df
+    df_out = filler(df_out)  # get zero-value dummy columns for values that don't appear in mann coll or crash type
 
     return df_out
 
-# TODO Need function to handle percentages for Crash Types
 
-# TODO Need function to handle final table
+# TODO Function to build criteria based on the cmf selection and applicable crash types
+def criteria_construction(crash_attr: list):
+    # needs to be able to dynamically build filtering criteria
+    translate ={
+        "Run off road": "RoadwayDeparture",
+        "Fixed object": "ct_G",
+        "Rear end": "Mann_Coll_B",
+        "Speed Related": "SpeedingRelated",
+        "Truck Related": "FMCSAReportableCrash",
+        "Wet Road": "WET",
+        "Nighttime": "DARK",
+        "Head on": "Mann_Coll_C",
+        "Vehicle/Pedestrian": "Pedestrian",
+        "Parking related": "ct_E",
+        "Single Vehicle": "SingleVehicle",
+        "Vehicle/bicycle": "Bicycle",
+        "Angle": "Mann_Coll_D",
+        "Multiple vehicle": "MultiVehicle",
+        "Left turn": "Left turn",
+        "Sideswipe": "Sideswipe",
+        "Right turn": "Right turn",
+        "Frontal and opposing direction sideswipe": "Mann_Coll_K",
+        "Dry weather": "DRY",
+        "Day time": "LIGHT",
+        "Other": "Mann_Coll_Z",
+        "Vehicle/Animal": "ct_N"
+    }
+    # maybe just write a dict first
+    pass
+
 
 
 if __name__ == "__main__":
@@ -137,4 +196,4 @@ if __name__ == "__main__":
     df = pd.read_excel(doc_string)
     df = conversion(df)
     df = dummy_wrapper(df)
-    print(df.columns)
+    print(df)
