@@ -160,15 +160,15 @@ def dummy_wrapper(df):
 
 
 # TODO Function to build criteria based on the cmf selection and applicable crash types
-def criteria_construction(crash_attr: list):
+def crash_attr_translate(cmf: dict):
     # needs to be able to dynamically build filtering criteria
-    translate ={
+    translate_dict ={
         "Run off road": "RoadwayDeparture",
         "Fixed object": "ct_G",
         "Rear end": "Mann_Coll_B",
         "Speed Related": "SpeedingRelated",
         "Truck Related": "FMCSAReportableCrash",
-        "Wet Road": "WET",
+        "Wet road": "WET",
         "Nighttime": "DARK",
         "Head on": "Mann_Coll_C",
         "Vehicle/Pedestrian": "Pedestrian",
@@ -186,14 +186,31 @@ def criteria_construction(crash_attr: list):
         "Other": "Mann_Coll_Z",
         "Vehicle/Animal": "ct_N"
     }
-    # maybe just write a dict first
+
+    converted_cols = [translate_dict[key] for key in cmf['crash_attr']]
+
+    return converted_cols
+
+def cmf_applicator():
     pass
-
-
 
 if __name__ == "__main__":
     doc_string = "077-05_17-19.xlsx"
     df = pd.read_excel(doc_string)
-    df = conversion(df)
-    df = dummy_wrapper(df)
-    print(df)
+
+    cmfs = [
+        {
+            'cmf1': 0.9,
+            'crash_attr': ['Head on','Wet road', 'Nighttime']
+        },
+        {
+            'cmf2':0.8,
+            'crash_attr': ['Angle', 'Day time']
+        }
+    ]
+
+    # df = conversion(df)
+    # df = dummy_wrapper(df)
+    translated_crash_attrs = [crash_attr_translate(cmf) for cmf in cmfs]
+
+    print(translated_crash_attrs)
