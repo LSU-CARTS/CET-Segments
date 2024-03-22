@@ -1,4 +1,6 @@
 import pandas as pd
+import urllib
+import configparser
 
 def dummies(row,vals,final_col_names=None):
     """
@@ -159,7 +161,6 @@ def dummy_wrapper(df):
     return df_out
 
 
-# TODO Function to build criteria based on the cmf selection and applicable crash types
 def crash_attr_translate(cmf: dict):
     # needs to be able to dynamically build filtering criteria
     translate_dict ={
@@ -191,13 +192,54 @@ def crash_attr_translate(cmf: dict):
 
     return converted_cols
 
-def cmf_applicator():
+def aadt_level(adt, conn_str, conn_str_sam = None):
+    try:
+        aadt_cutoffs = pd.read_sql("cutoffs", conn_str)
+    except:
+        # getting cutoffs using sam's details
+        pass
+
+    cutoffs = aadt_cutoffs.loc[aadt_cutoffs.HighwayClass == hwy_class].values[0][1:]
+    if adt > cutoffs[1]:
+        adt_class = 'high'
+    elif adt > cutoffs[0]:
+        adt_class = 'med'
+    else:
+        adt_class = 'low'
+    return adt_class
+
+def get_state_percents(adt_level, conn_str, conn_str_sam = None):
+    try:
+        state_percents = pd.read_sql(adt_level, conn_str)
+    except:
+        state_percents = pd.read_sql(adt_level, conn_str_sam)
+    # select rows relevant to severity
+    severity_state_percents = state_percents.iloc[0:4]
+    # select rows relevant to crash types
+    crash_state_percents = state_percents.iloc[5:24]
+    # select rows relevant to manners of collision
+    manner_state_percent = state_percents.iloc[24:36]
+    # select rows relevant to other crash factors
+    other_state_percents = state_percents.iloc[44:]
+
+def cmf_applicator(df, crash_attrs: list):
+    # needs to give a count of all rows where any of the crash attr columns are true (or ==1)
     pass
 
 if __name__ == "__main__":
     doc_string = "077-05_17-19.xlsx"
     df = pd.read_excel(doc_string)
 
+    global config
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+    conn_details = urllib.parse.quote_plus(
+        "DRIVER={ODBC Driver 17 for SQL Server};" + config['ConnectionStrings']['CatScan'])
+    conn_str = f'mssql+pyodbc:///?odbc_connect={conn_details}'
+
+    # ==============Sam's conn details here=================
+
+    hwy_class = 'Urban_4-Lane_Cont_Turn'
     cmfs = [
         {
             'cmf1': 0.9,
