@@ -263,7 +263,7 @@ def cmf_applicator(df, cmf: dict):
                 ser = pd.Series({s: 0})
                 totals = pd.concat([totals, ser])
 
-    return totals/len(df)
+    return totals/len(df.index)
 
 def cmf_adjuster(cmf:dict, severity_percents):
     """
@@ -279,10 +279,18 @@ def cmf_adjuster(cmf:dict, severity_percents):
     if cmf['severities'][0] != 'All':  # if not all severities are selected, adapt accordingly
         new_sev_list = np.setdiff1d(sev_list, cmf['severities'])  # get the severities not selected
         exp_percent.loc[new_sev_list] = [0 for s in new_sev_list]  # zero out severities not selected
-    per_veh_affected = sum(exp_percent)
-    adj_cmf = ((cmf['cmf'] - 1) * per_veh_affected) + 1
+    per_veh_effected = sum(exp_percent)
+    adj_cmf = ((cmf['cmf'] - 1) * per_veh_effected) + 1
     return adj_cmf
 
+def pv(r: float, n: int, pmt):
+    # takes in rate (r), number of periods (n), and payment size (pmt)
+    # future value (f) is not needed and therefore will always be 0
+    # 'when' (or: when payments are made, beginning or end of period (w)) is not needed, will always be 0
+    f = 0
+    w = 0
+    present_v = ((r + 1) ** (-n)*(-f * r - pmt * ((r + 1)**n - 1) * (r*w + 1)))/r
+    return present_v
 
 if __name__ == "__main__":
     doc_string = "069-02_16-18.xlsx"
