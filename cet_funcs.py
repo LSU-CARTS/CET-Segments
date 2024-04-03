@@ -1,6 +1,8 @@
 import pandas as pd
+import numpy as np
 import urllib
 import configparser
+from math import prod
 
 def dummies(row,vals,final_col_names=None):
     """
@@ -11,13 +13,13 @@ def dummies(row,vals,final_col_names=None):
     :return: dataframe or collection of series objects
     Output needs to be converted to dataframe then merged to the origin dataframe.
     """
-
+    # TODO Improve this. It's very bulky and is inefficient since it throws dataframes and series around
     width=len(vals)
 
     # address multiple groupings
     col_names = []
     for i in vals:
-        if type(i) == list:
+        if type(i) is list:
             i = "".join(x for x in i)
         col_names.append(i)
 
@@ -29,7 +31,6 @@ def dummies(row,vals,final_col_names=None):
         df_dummy = pd.DataFrame(columns=final_col_names)
     else:
         df_dummy = pd.DataFrame(columns=col_names)
-
 
     dummy_row = [0 for y in range(width)]
 
@@ -59,6 +60,7 @@ def conversion(df):
 
 def manner_severity_percents(df):
     """
+    DEPRECIATED; Not needed since percents are dynamically calculated cmf_applicator and cmf_adjuster.
     Creates pivot table that counts intersection between severity and crash manner values.
     Adds total row and column.
     Ensures that all valid values of crash manner and severity are present in the index and columns.
@@ -163,6 +165,7 @@ def dummy_wrapper(df):
 
 def crash_attr_translate(cmf: dict):
     # needs to be able to dynamically build filtering criteria
+    # needs edit and return each entire cmf dictionary entry
     translate_dict ={
         "Run off road": "RoadwayDeparture",
         "Fixed object": "ct_G",
@@ -185,19 +188,24 @@ def crash_attr_translate(cmf: dict):
         "Dry weather": "DRY",
         "Day time": "LIGHT",
         "Other": "Mann_Coll_Z",
-        "Vehicle/Animal": "ct_N"
+        "Vehicle/Animal": "ct_N",
+        "All": "All"
     }
 
     converted_cols = [translate_dict[key] for key in cmf['crash_attr']]
+    cmf['crash_attr'] = converted_cols  # this gets applied in place; no need to return anything
+    # return cmf
 
-    return converted_cols
+def aadt_level(adt, conn_str, conn_str_sam=None):
+    """
+    Only used when analyzing a segment. Gets the level grouping of AADT: low, med, high.
+    :param adt: Traffic measurement of the segment
+    :param conn_str: sql connection string
+    :param conn_str_sam:
+    :return:
+    """
+    aadt_cutoffs = pd.read_sql("cutoffs", conn_str)
 
-def aadt_level(adt, conn_str, conn_str_sam = None):
-    try:
-        aadt_cutoffs = pd.read_sql("cutoffs", conn_str)
-    except:
-        # getting cutoffs using sam's details
-        pass
 
     cutoffs = aadt_cutoffs.loc[aadt_cutoffs.HighwayClass == hwy_class].values[0][1:]
     if adt > cutoffs[1]:
@@ -208,27 +216,77 @@ def aadt_level(adt, conn_str, conn_str_sam = None):
         adt_class = 'low'
     return adt_class
 
-def get_state_percents(adt_level, conn_str, conn_str_sam = None):
+def get_state_percents(adt_level, hwy_class, conn_str, conn_str_sam = None):
+    """
+    Will need to be different for intersection CET
+    :param adt_level: low, med, high
+    :param conn_str:
+    :param conn_str_sam:
+    :return:
+    """
     try:
         state_percents = pd.read_sql(adt_level, conn_str)
     except:
         state_percents = pd.read_sql(adt_level, conn_str_sam)
     # select rows relevant to severity
-    severity_state_percents = state_percents.iloc[0:4]
+    severity_state_percents = state_percents.iloc[0:5]
     # select rows relevant to crash types
     crash_state_percents = state_percents.iloc[5:24]
     # select rows relevant to manners of collision
     manner_state_percent = state_percents.iloc[24:36]
     # select rows relevant to other crash factors
     other_state_percents = state_percents.iloc[44:]
+    return severity_state_percents[hwy_class]
 
-def cmf_applicator(df, crash_attrs: list):
+def cmf_applicator(df, cmf: dict):
     # needs to give a count of all rows where any of the crash attr columns are true (or ==1)
-    pass
+    crash_attrs = cmf['crash_attr']
+
+    sev_list = ['100','101','102','103','104']
+    if len(crash_attrs)>1:
+        filtered_df = df[(df[crash_attrs] == 1).any(axis=1)]
+        totals = filtered_df.groupby('CrashSeverityCode').size()
+        totals.index = totals.index.astype(str)
+        for s in sev_list:
+            if s not in totals.index:
+                ser = pd.Series({s:0})
+                totals = pd.concat([totals,ser])
+    else:
+        if crash_attrs[0] == 'All':
+            filtered_df = df
+        else:
+            filtered_df = df[(df[crash_attrs] == 1).any(axis=1)]
+        totals = filtered_df.groupby('CrashSeverityCode').size()
+        totals.index = totals.index.astype(str)
+        for s in sev_list:
+            if s not in totals.index:
+                ser = pd.Series({s: 0})
+                totals = pd.concat([totals, ser])
+
+    return totals/len(df)
+
+def cmf_adjuster(cmf:dict, severity_percents):
+    """
+    Gets the final adjusted CMF after accounting for expected percents and applicable severity levels.
+    :param cmf: An individual CMF from the cmfs dict.
+    :param severity_percents: The severity percents for the applicable highway class/ AADT level combo.
+    :return:
+    """
+    sev_list = ['100', '101', '102', '103', '104']
+    # multiply portion(scalar) by percents(series)
+    exp_percent = cmf['portion'] * severity_percents  # get expected percent
+    exp_percent.index = sev_list  # set index of expected percent as severity levels
+    if cmf['severities'][0] != 'All':  # if not all severities are selected, adapt accordingly
+        new_sev_list = np.setdiff1d(sev_list, cmf['severities'])  # get the severities not selected
+        exp_percent.loc[new_sev_list] = [0 for s in new_sev_list]  # zero out severities not selected
+    per_veh_affected = sum(exp_percent)
+    adj_cmf = ((cmf['cmf'] - 1) * per_veh_affected) + 1
+    return adj_cmf
+
 
 if __name__ == "__main__":
-    doc_string = "077-05_17-19.xlsx"
-    df = pd.read_excel(doc_string)
+    doc_string = "069-02_16-18.xlsx"
+    df = pd.read_excel(io=doc_string,sheet_name='segment')
 
     global config
     config = configparser.ConfigParser()
@@ -239,20 +297,44 @@ if __name__ == "__main__":
 
     # ==============Sam's conn details here=================
 
-    hwy_class = 'Urban_4-Lane_Cont_Turn'
-    cmfs = [
+    # ==============INPUTS==================================
+    hwy_class = 'Rural_2-Lane'
+    cmfs = {
+        'cmf1':
         {
-            'cmf1': 0.9,
-            'crash_attr': ['Head on','Wet road', 'Nighttime']
+            'cmf': 0.825,
+            'crash_attr': ['All'],
+            'severities': ['All']
         },
+        'cmf2':
         {
-            'cmf2':0.8,
-            'crash_attr': ['Angle', 'Day time']
+            'cmf':0.887,
+            'crash_attr': ['All'],
+            'severities': ['All']
+        },
+        'cmf3':
+        {
+            'cmf': 0.861,
+            'crash_attr': ['Wet road'],
+            'severities': ['All']
         }
-    ]
+    }
 
-    # df = conversion(df)
-    # df = dummy_wrapper(df)
-    translated_crash_attrs = [crash_attr_translate(cmf) for cmf in cmfs]
+    adt = 12500
+    adt_class = aadt_level(adt,conn_str)
+    severity_percents = get_state_percents(adt_class,hwy_class,conn_str)
+    # ===================END INPUTS=====================================
 
-    print(translated_crash_attrs)
+    df = conversion(df)
+    df = dummy_wrapper(df)
+
+    for cmf in cmfs: crash_attr_translate(cmfs[cmf])
+    percent_dist = [cmf_applicator(df, cmfs[x]) for x in cmfs]  # applicable crashes/total crashes per severity level
+
+    for t,cmf in zip(percent_dist,cmfs):  # need to add item to each CMF dict for sum of each item in percent_dist
+        cmfs[cmf]['portion'] = sum(t)
+        cmfs[cmf]['adj_cmf'] = cmf_adjuster(cmfs[cmf], severity_percents)  # after this each cmf has a list of expected percents per severity
+        # these need to be filtered by applicable severity levels for that CMF and then summed.
+    print(cmfs)
+    combined_cmf = prod([cmfs[cmf]['adj_cmf'] for cmf in cmfs])
+    print("\nCombined CMF: ", combined_cmf)
