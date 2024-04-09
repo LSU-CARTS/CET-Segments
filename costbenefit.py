@@ -32,3 +32,6 @@ def pv(r: float, n: int, pmt):
 
 SL_Benefit = -pv(Inflation, y, BenefitsPerYear)
 BenCost = SL_Benefit/EstimatedCost
+
+print(SL_Benefit)
+print(BenCost)
