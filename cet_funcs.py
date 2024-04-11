@@ -364,6 +364,17 @@ if __name__ == "__main__":
         cmfs[cmf]['adj_cmf'] = cmf_adjuster(cmfs[cmf], severity_percents)  # after this each cmf has a list of expected percents per severity
         # these need to be filtered by applicable severity levels for that CMF and then summed.
     print(cmfs)
+    
+    for cmf in cmfs.keys():
+        benefits_per_yr, total_benefit, bc_ratio = bca(cmfs[cmf]['adj_cmf'], exp_crashes, cm_cost, srv_life)
+        print(cmf)
+        print(f"Total Crashes: {total_crashes}")
+        print(f"Expected Crashes: \n{exp_crashes}")
+        print(f"\nBenefits per Year: \n{benefits_per_yr}")
+        print(f"\nTotal Expected Benefit: \n{total_benefit}")
+        print(f"\nExpected Cost of Countermeasure: \n{cm_cost}")
+        print(f"\nBenefit/Cost Ratio: \n{bc_ratio}")
+    
     combined_cmf = prod([cmfs[cmf]['adj_cmf'] for cmf in cmfs])
     print("\nCombined CMF: ", combined_cmf)
 
