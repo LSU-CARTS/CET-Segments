@@ -319,30 +319,40 @@ if __name__ == "__main__":
 
     # ==============INPUTS==================================
     hwy_class = 'Rural_2-Lane'
+    # TODO Add a cost to each cmf
     cmfs = {
         'cmf1':
         {
             'cmf': 0.825,
             'crash_attr': ['All'],
-            'severities': ['All']
+            'severities': ['All'],
+            'est_cost': 60240,
+            'cost': 240960,
+            'srv_life': 5
         },
         'cmf2':
         {
             'cmf':0.887,
             'crash_attr': ['All'],
-            'severities': ['All']
+            'severities': ['All'],
+            'est_cost': 66264,
+            'cost': 265056,
+            'srv_life': 5
         },
         'cmf3':
         {
             'cmf': 0.861,
             'crash_attr': ['Wet road'],
-            'severities': ['All']
+            'severities': ['All'],
+            'est_cost': 66264,
+            'cost': 265056,
+            'srv_life': 5
         }
     }
 
     crash_years = 3
     srv_life = 20  # possible future feature: individual BCAs for each CM with their own service life.
-    cm_cost = 771072
+    cm_cost = sum([cmfs[cmf]['cost'] for cmf in cmfs])
 
     adt = 12500
     adt_class = aadt_level(adt,conn_str)
@@ -366,13 +376,11 @@ if __name__ == "__main__":
     print(cmfs)
     
     for cmf in cmfs.keys():
-        benefits_per_yr, total_benefit, bc_ratio = bca(cmfs[cmf]['adj_cmf'], exp_crashes, cm_cost, srv_life)
-        print(cmf)
-        print(f"Total Crashes: {total_crashes}")
-        print(f"Expected Crashes: \n{exp_crashes}")
+        benefits_per_yr, total_benefit, bc_ratio = bca(cmfs[cmf]['adj_cmf'], exp_crashes, cmfs[cmf]['est_cost'], cmfs[cmf]['srv_life'])
+        print(f"=========={cmf}==========")
         print(f"\nBenefits per Year: \n{benefits_per_yr}")
         print(f"\nTotal Expected Benefit: \n{total_benefit}")
-        print(f"\nExpected Cost of Countermeasure: \n{cm_cost}")
+        print(f"\nEstimated Cost of Countermeasure: \n{cmfs[cmf]['est_cost']}")
         print(f"\nBenefit/Cost Ratio: \n{bc_ratio}")
     
     combined_cmf = prod([cmfs[cmf]['adj_cmf'] for cmf in cmfs])
