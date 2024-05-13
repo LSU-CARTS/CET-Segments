@@ -1,0 +1,130 @@
+import pika
+import uuid
+import sys
+import pandas as pd
+import json
+import configparser
+import urllib
+
+doc_string = "069-02_16-18.xlsx"
+df = pd.read_excel(doc_string)
+df['CrashDate'] = df.CrashDate.astype(str)
+data = df.to_dict(orient='records')  # .to_json(orient='records')
+print(df.columns)
+
+global config
+config = configparser.ConfigParser()
+config.read('config.ini')
+conn_details = urllib.parse.quote_plus(
+    "DRIVER={ODBC Driver 17 for SQL Server};" + config['ConnectionStrings']['CatScan'])
+conn_str = f'mssql+pyodbc:///?odbc_connect={conn_details}'
+
+def aadt_level(adt, conn_str, conn_str_sam=None):
+    """
+    Only used when analyzing a segment. Gets the level grouping of AADT: low, med, high.
+    :param adt: Traffic measurement of the segment
+    :param conn_str: sql connection string
+    :param conn_str_sam:
+    :return:
+    """
+    aadt_cutoffs = pd.read_sql("cutoffs", conn_str)
+
+    cutoffs = aadt_cutoffs.loc[aadt_cutoffs.HighwayClass == hwy_class].values[0][1:]
+    if adt > cutoffs[1]:
+        adt_class = 'high'
+    elif adt > cutoffs[0]:
+        adt_class = 'med'
+    else:
+        adt_class = 'low'
+    return adt_class
+
+# ===Road Features===
+hwy_class = "Rural_2-Lane"
+aadt = 12500
+aadt_class = aadt_level(aadt,conn_str)
+
+# Start and End date
+start_date = '2020-1-1'
+end_date = '2020-12-31'
+
+cmfs = {
+    'cmf1':
+        {
+            'cmf': 0.825,
+            'crash_attr': ['All'],
+            'severities': ['All'],
+            'est_cost': 60240,
+            'cost': 240960,
+            'srv_life': 5
+        },
+    'cmf2':
+        {
+            'cmf': 0.887,
+            'crash_attr': ['All'],
+            'severities': ['All'],
+            'est_cost': 66264,
+            'cost': 265056,
+            'srv_life': 5
+        },
+    'cmf3':
+        {
+            'cmf': 0.861,
+            'crash_attr': ['Wet road'],
+            'severities': ['All'],
+            'est_cost': 66264,
+            'cost': 265056,
+            'srv_life': 5
+        }
+}
+full_life = 20
+inflation = 0.04
+
+# Send data and metrics to CAT Scan
+json_data = {'message':json.dumps({'Data': data, 'Hwy_class': hwy_class, 'Adt_class': aadt_class,
+                                   'StartDate': start_date, 'EndDate': end_date, 'Cmfs': cmfs, 'Full_life': full_life,
+                                   'Aadt': aadt, 'Inflation': inflation, 'ProjectId': '12345'}), 'clientId':'BCA Test 2-20-2024 #17'}
+
+# Send jobs to the worker queue
+connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+channel = connection.channel()
+
+# Prepare and send your job data
+channel.basic_publish(exchange='',
+                      routing_key='CETSegments',
+                      body=json.dumps(json_data))
+print("Job sent")
+
+# Close the channel used for sending jobs
+connection.close()
+
+# ===========Listen for results============
+result_connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+result_channel = result_connection.channel()
+
+# Declare an exchange where the worker posts results
+result_channel.exchange_declare(exchange='CETSegmentsResults', exchange_type='fanout')
+
+# Create a unique queue for this client
+result_queue = result_channel.queue_declare(queue='', exclusive=True)
+result_queue_name = result_queue.method.queue
+
+# Bind the client's queue to the exchange
+result_channel.queue_bind(exchange='CETSegmentsResults', queue=result_queue_name)
+
+def callback(ch, method, properties, response):
+    try:
+        # ch.basic_ack()
+        print(f"Received result")
+        # Process the result here
+        response = json.loads(response)
+
+
+        ch.close()
+    except Exception as e:
+        print(e)
+
+
+result_channel.basic_consume(queue=result_queue_name, on_message_callback=callback, auto_ack=True)
+print("Waiting for results. To exit press Ctrl+C")
+result_channel.start_consuming()
+print('here')

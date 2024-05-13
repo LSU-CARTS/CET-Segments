@@ -292,9 +292,8 @@ def pv(r: float, n: int, pmt):
     present_v = ((r + 1) ** (-n)*(-f * r - pmt * ((r + 1)**n - 1) * (r*w + 1)))/r
     return present_v
 
-def bca(final_cmf, crashes_per_yr, cm_cost, srv_life):
+def bca(final_cmf, crashes_per_yr, cm_cost, srv_life, inflation):
     crash_costs = [1710561.00, 489446.00, 173578.00, 58636.00, 24982.00]
-    inflation = 0.04
     crf = 1 - final_cmf
 
     crash_reduction = crf * crashes_per_yr
@@ -306,7 +305,7 @@ def bca(final_cmf, crashes_per_yr, cm_cost, srv_life):
 
 if __name__ == "__main__":
     doc_string = "069-02_16-18.xlsx"
-    df = pd.read_excel(io=doc_string,sheet_name='segment')
+    df = pd.read_excel(io=doc_string,sheet_name='segment - mod')
 
     global config
     config = configparser.ConfigParser()
@@ -351,20 +350,20 @@ if __name__ == "__main__":
     }
 
     crash_years = 3
-    srv_life = 20  # possible future feature: individual BCAs for each CM with their own service life.
+    srv_life = 20
     cm_cost = sum([cmfs[cmf]['cost'] for cmf in cmfs])
 
     adt = 12500
     adt_class = aadt_level(adt,conn_str)
 
     # severity_percents = get_state_percents(adt_class,hwy_class,conn_str)
-    severity_percents = pd.Series([0.010370,0.00881481, 0.060, 0.3059259, 0.6155556])  # TEMP values for validation
+    severity_percents = pd.Series([0.0103703703703704,0.00814814814814815, 0.060, 0.305925925925926, 0.615555556], dtype=pd.Float64Dtype())  # TEMP values for validation
     # ===================END INPUTS=====================================
 
     df = conversion(df)
     df = dummy_wrapper(df)
     total_crashes = len(df.index)
-    exp_crashes = total_crashes*severity_percents  # vector of expected crashes per severity level
+    exp_crashes = total_crashes*severity_percents/crash_years  # vector of expected crashes per severity level
 
     for cmf in cmfs: crash_attr_translate(cmfs[cmf])
     percent_dist = [cmf_applicator(df, cmfs[x]) for x in cmfs]  # applicable crashes/total crashes per severity level
@@ -376,7 +375,7 @@ if __name__ == "__main__":
     print(cmfs)
     
     for cmf in cmfs.keys():
-        benefits_per_yr, total_benefit, bc_ratio = bca(cmfs[cmf]['adj_cmf'], exp_crashes, cmfs[cmf]['est_cost'], cmfs[cmf]['srv_life'])
+        benefits_per_yr, total_benefit, bc_ratio = bca(cmfs[cmf]['adj_cmf'], exp_crashes, cmfs[cmf]['est_cost'], cmfs[cmf]['srv_life'], inflation=0.04)
         print(f"=========={cmf}==========")
         print(f"\nBenefits per Year: \n{benefits_per_yr}")
         print(f"\nTotal Expected Benefit: \n{total_benefit}")

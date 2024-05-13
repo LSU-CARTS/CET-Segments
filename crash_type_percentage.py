@@ -47,5 +47,4 @@ for k in range(len(Sev_CDs)):
 
 Pct = Pvt/TC
 
-CType_Pvt = pd.pivot_table(CrashData[['Crash_Type', 'CrashSeverityCode']], index='Crash_Type' columns='CrashSeverityCode',
-                     aggfunc=len, fill_value=0, margins=True, dropna=False))
+CType_Pvt = pd.pivot_table(CrashData[['Crash_Type', 'CrashSeverityCode']], index='Crash_Type', columns='CrashSeverityCode', aggfunc=len, fill_value=0, margins=True, dropna=False)
