@@ -55,10 +55,11 @@ def cmf_adjuster(cmf, severity_percents):
     adj_cmf = ((cmf.cmf - 1) * per_veh_effected) + 1
     return adj_cmf
 
-severity_percents = pd.Series([0.010370,0.00881481, 0.060, 0.3059259, 0.6155556])  # TEMP values for validation
+def combined_cmf(cmf_list):
+    pass
 
 class CMF:
-    def __init__(self,cmf,crash_attr,severities,est_cost,srv_life,df):
+    def __init__(self,id,cmf,desc,crash_attr,severities,est_cost,srv_life,full_life, exp_crashes, severity_percents, crash_costs, inflation,df):
         translate_dict = {
             "Run off road": "RoadwayDeparture",
             "Fixed object": "ct_G",
@@ -84,22 +85,26 @@ class CMF:
             "Vehicle/Animal": "ct_N",
             "All": "All"
         }
+        # Basic attributes
+        self.id = id
         self.cmf = cmf
+        self.desc = desc
         self.crash_attr = [translate_dict[key] for key in crash_attr]
         self.severities = severities
         self.est_cost = est_cost  # cost for a single service life
         self.srv_life = srv_life
-        
+        self.full_life = full_life
+        # Calculated attributes
         percent_dist = cmf_applicator(df,self)
         self.portion = sum(percent_dist)
         self.adj_cmf = cmf_adjuster(self, severity_percents)
         self.cost = est_cost * full_life/srv_life  # cost for multiple service lives
-
+        # BCA attributes
         self.crf = 1 - self.adj_cmf
         self.crash_reduction = self.crf * exp_crashes
-        self.ben_per_year = sum(crash_costs * self.crash_reduction)
-        self.total_benefit = -pv(inflation, self.srv_life, self.ben_per_year)
-        self.bc_ratio = self.total_benefit/self.est_cost
+        self.ben_per_year = round(sum(crash_costs * self.crash_reduction), 2)
+        self.total_benefit = round(-pv(inflation, self.srv_life, self.ben_per_year), 2)
+        self.bc_ratio = round(self.total_benefit/self.est_cost, 3)
 
 
 if __name__ == "__main__":
@@ -117,41 +122,55 @@ if __name__ == "__main__":
     conn_str = f'mssql+pyodbc:///?odbc_connect={conn_details}'
 
     cmfs = {
-        'cmf1':
-        {
-            'cmf': 0.825,
-            'crash_attr': ['All'],
-            'severities': ['All'],
-            'est_cost': 60240,
-            'srv_life': 5
-        },
-        'cmf2':
-        {
-            'cmf':0.887,
-            'crash_attr': ['All'],
-            'severities': ['All'],
-            'est_cost': 66264,
-            'srv_life': 5
-        },
-        'cmf3':
-        {
-            'cmf': 0.861,
-            'crash_attr': ['Wet road'],
-            'severities': ['All'],
-            'est_cost': 66264,
-            'srv_life': 5
-        }
+        '4736':
+            {
+                'cmf': 0.825,
+                'desc': 'description of CMF1',
+                'crash_attr': ['All'],
+                'severities': ['All'],
+                'est_cost': 60240,
+                'srv_life': 5
+            },
+        '8101':
+            {
+                'cmf': 0.887,
+                'desc': 'description of CMF2',
+                'crash_attr': ['All'],
+                'severities': ['All'],
+                'est_cost': 66264,
+                'srv_life': 5
+            },
+        '8137':
+            {
+                'cmf': 0.861,
+                'desc': 'description of CMF3. Wet roads',
+                'crash_attr': ['Wet road'],
+                'severities': ['All'],
+                'est_cost': 66264,
+                'srv_life': 5
+            }
     }
 
-    full_life = 20
+    full_life_set = 20
     inflation = 0.04
     crash_costs = [1710561.00, 489446.00, 173578.00, 58636.00, 24982.00]
     total_crashes = len(df.index)
-    crash_years = 1
-    exp_crashes = total_crashes * severity_percents / crash_years
-    cmf_list = [CMF(*x.values(), df) for x in cmfs.values()]
+    crash_years = 3
+    severity_percents = pd.Series([0.01037037037,0.008148148, 0.060, 0.3059259259, 0.615555556])  # TEMP values for validation
+    exp_crashes_set = total_crashes / crash_years * severity_percents
+    ref_metrics = [full_life_set, exp_crashes_set, severity_percents, crash_costs, inflation]
 
+    cmf_list = [CMF(x, *y.values(), *ref_metrics, df) for x,y in zip(cmfs.keys(),cmfs.values())]
 
-    [print(y.est_cost) for y in cmf_list]
+    cmf_dict = {c.id: {'Description':c.desc,
+                       'Est Cost':c.est_cost,
+                       'Srv Life': c.srv_life,
+                       'Benefits/Yr':c.ben_per_year,
+                       'Benefit/Cost Ratio':c.bc_ratio,
+                       'Expected Service Life Benefits':c.total_benefit} for c in cmf_list}
+    # print(cmf_dict)
+    out_df = pd.DataFrame.from_dict(cmf_dict,orient='index')
+    print(out_df.to_string())
+    # [print(y.id) for y in cmf_list]
 
 

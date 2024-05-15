@@ -12,7 +12,7 @@ from math import prod
 import traceback
 import pyodbc
 from CMF_class import CMF
-from cet_funcs import conversion, dummy_wrapper, get_state_percents
+from cet_funcs import conversion, dummy_wrapper, get_state_percents, pv
 
 def publish_event(channel, method, body,exchange):
     channel.basic_publish(exchange=exchange, routing_key='' ,body=body)
@@ -59,14 +59,14 @@ def publish_statusevent(channel,body,exchange):
 #     cursor.execute(log_sql_insert)
 #     cursor.commit()
 
-def cet_seg(data):
+def cet_seg(data, projectId, clientId):
     conn_details = urllib.parse.quote_plus(
         "DRIVER={ODBC Driver 17 for SQL Server};" + config['ConnectionStrings']['CatScan'])
     conn_str = f'mssql+pyodbc:///?odbc_connect={conn_details}'
 
     # unpack json data
     hwy_class, aadt_class, startDate, endDate = data['Hwy_class'], data['Adt_class'], data['StartDate'], data['EndDate']
-    cmfs, full_life = data['Cmfs'], data['Full_life']
+    cmfs, full_life, inflation = data['Cmfs'], data['Full_life'], data['Inflation']
     df = pd.DataFrame(data['Data'])
 
     # get year information
@@ -74,12 +74,46 @@ def cet_seg(data):
     to_year = int(endDate[0:4])
     crash_years = to_year - from_year + 1
 
-    severity_percents = get_state_percents(aadt_class, hwy_class, conn_str)
+    # Get background percents for current hwy class/adt class.
+    # severity_percents = get_state_percents(aadt_class, hwy_class, conn_str)
 
     df = conversion(df)
     df = dummy_wrapper(df)
     total_crashes = len(df.index)
-    exp_crashes = total_crashes*severity_percents/crash_years
+    # crash_costs = pd.read_sql('CrashPrices', conn_str)['Price'].apply(int).to_list()
+    crash_costs = [1710561.00, 489446.00, 173578.00, 58636.00, 24982.00]# TEMP values for validation
+    severity_percents = pd.Series([0.01037037037,0.008148148, 0.060, 0.3059259259, 0.615555556])  # TEMP values for validation
+    exp_crashes = total_crashes / crash_years * severity_percents
+
+    ref_metrics = [full_life, exp_crashes, severity_percents, crash_costs, inflation]
+
+
+    cmf_list = [CMF(x, *y.values(), *ref_metrics, df) for x, y in zip(cmfs.keys(), cmfs.values())]
+    cmf_dict = {c.id: {'Description': c.desc,
+                       'Est Cost': c.est_cost,
+                       'Srv Life': c.srv_life,
+                       'Benefits/Yr': c.ben_per_year,
+                       'Benefit/Cost Ratio': c.bc_ratio,
+                       'Expected Service Life Benefits': c.total_benefit} for c in cmf_list}
+
+    # combined cmf results
+    combined_cmf = prod([c.adj_cmf for c in cmf_list])
+    crash_reduced = exp_crashes * (1-combined_cmf)
+    total_cost = sum([c.cost for c in cmf_list])
+    ben_per_year = round(sum(crash_costs * crash_reduced),2)
+    total_benefit = round(-pv(inflation, full_life, ben_per_year), 2)
+    bc_ratio = round(total_benefit/total_cost, 3)
+    combined_results = {'comb_cmf': combined_cmf,
+                        'crash_reduced':sum(crash_reduced),
+                        'total_cost':total_cost,
+                        'ben_per_year': ben_per_year,
+                        'total_benefit':total_benefit,
+                        'bc_ratio': bc_ratio}
+    outputDict = {'ind_cmfs': cmf_dict, 'comb_cmf': combined_results}
+
+    return json.dumps(outputDict)
+
+    # TODO: Later: Needs to return the overall results of the combined CMFs
 
 def on_request(ch, method, props, body):
     bodyobj = json.loads(body)
@@ -96,13 +130,16 @@ def on_request(ch, method, props, body):
         status_event = {'ClientId':clientId,'Status': 'Success', 'Message': 'CET Calculation finished successfully.'}
         publish_statusevent(ch, json.dumps(status_event), 'JobStatus')
         publish_event(ch, method, response, 'CETSegmentsResults')
-        print('here2')
+
     except Exception as e:
         print(e)
         error_stack = traceback.format_exc()
+        print(error_stack)
+        response = error_stack
         # log_func(crashdata,clientId,projectId,error_stack,e)
         status_event = {'ClientId':clientId,'Status': 'Failure', 'Message': str(e)}
         publish_event(ch, method, json.dumps(status_event), 'JobStatus')
+        # Send response to client of just error message?
 
 def main():
     global config
@@ -125,3 +162,15 @@ def main():
     print(" [x] Awaiting CET Requests...")
     channel.start_consuming()
 
+if __name__ == '__main__':
+    try:
+        main()
+        print(" [x] Awaiting CAT Scan Requests...")
+
+        # logging.debug('Startup Successful. Service is now running.')
+    except KeyboardInterrupt:
+        print('Interrupted')
+        try:
+            sys.exit(0)
+        except SystemExit:
+            os._exit(0)

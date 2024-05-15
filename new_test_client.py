@@ -7,10 +7,10 @@ import configparser
 import urllib
 
 doc_string = "069-02_16-18.xlsx"
-df = pd.read_excel(doc_string)
+df = pd.read_excel(doc_string, sheet_name='segment - mod')
 df['CrashDate'] = df.CrashDate.astype(str)
 data = df.to_dict(orient='records')  # .to_json(orient='records')
-print(df.columns)
+# print(df.columns)
 
 global config
 config = configparser.ConfigParser()
@@ -44,44 +44,46 @@ aadt = 12500
 aadt_class = aadt_level(aadt,conn_str)
 
 # Start and End date
-start_date = '2020-1-1'
-end_date = '2020-12-31'
+start_date = '2016-1-1'
+end_date = '2018-12-31'
+
+full_life_set = 20
+inflation = 0.04
 
 cmfs = {
-    'cmf1':
+    '4736':
         {
             'cmf': 0.825,
+            'desc': 'description of CMF1',
             'crash_attr': ['All'],
             'severities': ['All'],
             'est_cost': 60240,
-            'cost': 240960,
             'srv_life': 5
         },
-    'cmf2':
+    '8101':
         {
             'cmf': 0.887,
+            'desc': 'description of CMF2',
             'crash_attr': ['All'],
             'severities': ['All'],
             'est_cost': 66264,
-            'cost': 265056,
             'srv_life': 5
         },
-    'cmf3':
+    '8137':
         {
             'cmf': 0.861,
+            'desc': 'description of CMF3. Wet roads',
             'crash_attr': ['Wet road'],
             'severities': ['All'],
             'est_cost': 66264,
-            'cost': 265056,
             'srv_life': 5
         }
 }
-full_life = 20
-inflation = 0.04
+
 
 # Send data and metrics to CAT Scan
 json_data = {'message':json.dumps({'Data': data, 'Hwy_class': hwy_class, 'Adt_class': aadt_class,
-                                   'StartDate': start_date, 'EndDate': end_date, 'Cmfs': cmfs, 'Full_life': full_life,
+                                   'StartDate': start_date, 'EndDate': end_date, 'Cmfs': cmfs, 'Full_life': full_life_set,
                                    'Aadt': aadt, 'Inflation': inflation, 'ProjectId': '12345'}), 'clientId':'BCA Test 2-20-2024 #17'}
 
 # Send jobs to the worker queue
@@ -117,7 +119,12 @@ def callback(ch, method, properties, response):
         print(f"Received result")
         # Process the result here
         response = json.loads(response)
-
+        ind_cmfs = response['ind_cmfs']
+        comb_cmf = response['comb_cmf']
+        df_resp = pd.DataFrame.from_dict(ind_cmfs,orient='index')
+        print(df_resp.to_string())
+        print('\n')
+        print(comb_cmf)
 
         ch.close()
     except Exception as e:
