@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import urllib
 import configparser
-from cet_funcs import conversion, dummy_wrapper, bca, pv
+from cet_funcs import conversion, dummy_wrapper, bca, pv, aadt_level, get_state_percents
 
 def cmf_applicator(df, cmf):
     # needs to give a count of all rows where any of the crash attr columns are true (or ==1)
@@ -110,22 +110,27 @@ if __name__ == "__main__":
     df = pd.read_excel(io=doc_string, sheet_name='segment - mod')
     df = conversion(df)
     df = dummy_wrapper(df)
+    sam_bool = False
 
     global config
     config = configparser.ConfigParser()
     config.read('config.ini')
     # server and db info to make the data pull
-    server = 'SAMLAPTOP'
-    database = 'CATSCAN'
-
-    # connection string
-    conn_details = (
-            r"Driver={ODBC Driver 17 for SQL Server};"
-            f"Server={server};"
-            f"Database={database};"
-            r"Trusted_Connection=yes"
-        )
+    conn_details = urllib.parse.quote_plus(
+        "DRIVER={ODBC Driver 17 for SQL Server};" + config['ConnectionStrings']['CatScan'])
     conn_str = f'mssql+pyodbc:///?odbc_connect={conn_details}'
+    if sam_bool:
+        server = 'SAMLAPTOP'
+        database = 'CATSCAN'
+
+        # connection string
+        conn_details = (
+                r"Driver={ODBC Driver 17 for SQL Server};"
+                f"Server={server};"
+                f"Database={database};"
+                r"Trusted_Connection=yes"
+            )
+        conn_str = f'mssql+pyodbc:///?odbc_connect={conn_details}'
 
     cmfs = {
         '4736':
@@ -169,36 +174,12 @@ if __name__ == "__main__":
     hwy_class = 'Rural_2-Lane'
     adt = 12500
     srv_life = 20
-    
-    def aadt_level(adt, conn_str, conn_str_sam=None):
-        """
-        Only used when analyzing a segment. Gets the level grouping of AADT: low, med, high.
-        :param adt: Traffic measurement of the segment
-        :param conn_str: sql connection string
-        :param conn_str_sam:
-        :return:
-        """
-        aadt_cutoffs = pd.read_sql("cutoffs", conn_str)
 
+    adt_class = aadt_level(adt, hwy_class, conn_str)
 
-        cutoffs = aadt_cutoffs.loc[aadt_cutoffs.HighwayClass == hwy_class].values[0][1:]
-        if adt > cutoffs[1]:
-            adt_class = 'high'
-        elif adt > cutoffs[0]:
-            adt_class = 'med'
-        else:
-            adt_class = 'low'
-        return adt_class
-
-    def sev_percents(adt,conn_str):
-        level = aadt_level(adt,conn_str)
-        level_table = pd.read_sql(level,conn_str)
-        percents = level_table[hwy_class][:5]
-        return(percents)
+    severity_percents = get_state_percents(adt_class,hwy_class,conn_str)
     
-    severity_percents = sev_percents(adt, conn_str)
-    
-    exp_crashes_set = total_crashes / crash_years * severity_percents
+    # exp_crashes_set = total_crashes / crash_years * severity_percents
     ref_metrics = [full_life_set, exp_crashes_set, severity_percents, crash_costs, inflation]
 
     cmf_list = [CMF(x, *y.values(), *ref_metrics, df) for x,y in zip(cmfs.keys(),cmfs.values())]

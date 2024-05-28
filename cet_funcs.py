@@ -196,7 +196,8 @@ def crash_attr_translate(cmf: dict):
     cmf['crash_attr'] = converted_cols  # this gets applied in place; no need to return anything
     # return cmf
 
-def aadt_level(adt, conn_str, conn_str_sam=None):
+
+def aadt_level(adt, hwy_class, conn_str):
     """
     Only used when analyzing a segment. Gets the level grouping of AADT: low, med, high.
     :param adt: Traffic measurement of the segment
@@ -205,7 +206,6 @@ def aadt_level(adt, conn_str, conn_str_sam=None):
     :return:
     """
     aadt_cutoffs = pd.read_sql("cutoffs", conn_str)
-
 
     cutoffs = aadt_cutoffs.loc[aadt_cutoffs.HighwayClass == hwy_class].values[0][1:]
     if adt > cutoffs[1]:
@@ -216,7 +216,7 @@ def aadt_level(adt, conn_str, conn_str_sam=None):
         adt_class = 'low'
     return adt_class
 
-def get_state_percents(adt_level, hwy_class, conn_str, conn_str_sam = None):
+def get_state_percents(adt_class, hwy_class, conn_str):
     """
     Will need to be different for intersection CET
     :param adt_level: low, med, high
@@ -224,10 +224,8 @@ def get_state_percents(adt_level, hwy_class, conn_str, conn_str_sam = None):
     :param conn_str_sam:
     :return:
     """
-    try:
-        state_percents = pd.read_sql(adt_level, conn_str)
-    except:
-        state_percents = pd.read_sql(adt_level, conn_str_sam)
+    state_percents = pd.read_sql(adt_class, conn_str)
+
     # select rows relevant to severity
     severity_state_percents = state_percents.iloc[0:5]
     # select rows relevant to crash types
