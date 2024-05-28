@@ -66,6 +66,7 @@ def cet_seg(data, projectId, clientId):
 
     # unpack json data
     hwy_class, aadt_class, startDate, endDate = data['Hwy_class'], data['Adt_class'], data['StartDate'], data['EndDate']
+    seg_len, exp_crash_mi_yr = data['SegLen'], data['ExpCrashMileYear']
     cmfs, full_life, inflation = data['Cmfs'], data['Full_life'], data['Inflation']
     df = pd.DataFrame(data['Data'])
 
@@ -81,9 +82,9 @@ def cet_seg(data, projectId, clientId):
     df = dummy_wrapper(df)
     total_crashes = len(df.index)
     # crash_costs = pd.read_sql('CrashPrices', conn_str)['Price'].apply(int).to_list()
-    crash_costs = [1710561.00, 489446.00, 173578.00, 58636.00, 24982.00]# TEMP values for validation
+    crash_costs = [1710561.00, 489446.00, 173578.00, 58636.00, 24982.00]  # TEMP values for validation
     severity_percents = pd.Series([0.01037037037,0.008148148, 0.060, 0.3059259259, 0.615555556])  # TEMP values for validation
-    exp_crashes = total_crashes / crash_years * severity_percents
+    exp_crashes = exp_crash_mi_yr * seg_len * severity_percents
 
     ref_metrics = [full_life, exp_crashes, severity_percents, crash_costs, inflation]
 
@@ -112,8 +113,6 @@ def cet_seg(data, projectId, clientId):
     outputDict = {'ind_cmfs': cmf_dict, 'comb_cmf': combined_results}
 
     return json.dumps(outputDict)
-
-    # TODO: Later: Needs to return the overall results of the combined CMFs
 
 def on_request(ch, method, props, body):
     bodyobj = json.loads(body)

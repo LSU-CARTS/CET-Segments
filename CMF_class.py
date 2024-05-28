@@ -156,8 +156,10 @@ if __name__ == "__main__":
     crash_costs = [1710561.00, 489446.00, 173578.00, 58636.00, 24982.00]
     total_crashes = len(df.index)
     crash_years = 3
+    seg_len = 3.012
+    exp_crash_mi_yr = 2.986707023876080
     severity_percents = pd.Series([0.01037037037,0.008148148, 0.060, 0.3059259259, 0.615555556])  # TEMP values for validation
-    exp_crashes_set = total_crashes / crash_years * severity_percents
+    exp_crashes_set = exp_crash_mi_yr * seg_len * severity_percents
     ref_metrics = [full_life_set, exp_crashes_set, severity_percents, crash_costs, inflation]
 
     cmf_list = [CMF(x, *y.values(), *ref_metrics, df) for x,y in zip(cmfs.keys(),cmfs.values())]
@@ -169,6 +171,8 @@ if __name__ == "__main__":
                        'Benefit/Cost Ratio':c.bc_ratio,
                        'Expected Service Life Benefits':c.total_benefit} for c in cmf_list}
     # print(cmf_dict)
+    print(exp_crash_mi_yr * seg_len)
+    print(exp_crashes_set)
     out_df = pd.DataFrame.from_dict(cmf_dict,orient='index')
     print(out_df.to_string())
     # [print(y.id) for y in cmf_list]

@@ -10,7 +10,15 @@ doc_string = "069-02_16-18.xlsx"
 df = pd.read_excel(doc_string, sheet_name='segment - mod')
 df['CrashDate'] = df.CrashDate.astype(str)
 data = df.to_dict(orient='records')  # .to_json(orient='records')
-# print(df.columns)
+
+def sent_data_cap(sent_data):
+    with open('example io\\sent_data.json', 'w', encoding='utf-8') as f:
+        json.dump(sent_data, f, ensure_ascii=False, indent=4)
+def return_data_cap(return_data):
+    with open('example io\\return_data.json', 'w', encoding='utf-8') as f:
+        json.dump(return_data, f, ensure_ascii=False, indent=4)
+
+io_capture_bool = True
 
 global config
 config = configparser.ConfigParser()
@@ -50,6 +58,9 @@ end_date = '2018-12-31'
 full_life_set = 20
 inflation = 0.04
 
+seg_len = 3.012
+exp_crash_per_mile_year = 2.98670702387608
+
 cmfs = {
     '4736':
         {
@@ -84,7 +95,11 @@ cmfs = {
 # Send data and metrics to CAT Scan
 json_data = {'message':json.dumps({'Data': data, 'Hwy_class': hwy_class, 'Adt_class': aadt_class,
                                    'StartDate': start_date, 'EndDate': end_date, 'Cmfs': cmfs, 'Full_life': full_life_set,
-                                   'Aadt': aadt, 'Inflation': inflation, 'ProjectId': '12345'}), 'clientId':'BCA Test 2-20-2024 #17'}
+                                   'Aadt': aadt, 'Inflation': inflation, 'SegLen': seg_len, 'ExpCrashMileYear': exp_crash_per_mile_year,
+                                   'ProjectId': '12345'}), 'clientId':'BCA Test 2-20-2024 #17'}
+
+if io_capture_bool:
+    sent_data_cap(json_data)
 
 # Send jobs to the worker queue
 connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
@@ -125,6 +140,9 @@ def callback(ch, method, properties, response):
         print(df_resp.to_string())
         print('\n')
         print(comb_cmf)
+
+        if io_capture_bool:
+            return_data_cap(response)
 
         ch.close()
     except Exception as e:

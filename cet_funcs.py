@@ -293,7 +293,7 @@ def pv(r: float, n: int, pmt):
     return present_v
 
 def bca(final_cmf, crashes_per_yr, cm_cost, srv_life, inflation):
-    crash_costs = [1710561.00, 489446.00, 173578.00, 58636.00, 24982.00]
+    crash_costs = [1710561.00, 489446.00, 173578.00, 58636.00, 24982.00]  # TEMP Values
     crf = 1 - final_cmf
 
     crash_reduction = crf * crashes_per_yr
