@@ -310,8 +310,14 @@ if __name__ == "__main__":
     global config
     config = configparser.ConfigParser()
     config.read('config.ini')
-    conn_details = urllib.parse.quote_plus(
-        "DRIVER={ODBC Driver 17 for SQL Server};" + config['ConnectionStrings']['CatScan'])
+    server = 'SAMLAPTOP'
+    database = 'CATSCAN'
+    conn_details = (
+            r"Driver={ODBC Driver 17 for SQL Server};"
+            f"Server={server};"
+            f"Database={database};"
+            r"Trusted_Connection=yes"
+        )
     conn_str = f'mssql+pyodbc:///?odbc_connect={conn_details}'
 
     # ==============Sam's conn details here=================
