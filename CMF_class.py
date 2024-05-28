@@ -55,9 +55,6 @@ def cmf_adjuster(cmf, severity_percents):
     adj_cmf = ((cmf.cmf - 1) * per_veh_effected) + 1
     return adj_cmf
 
-def combined_cmf(cmf_list):
-    pass
-
 class CMF:
     def __init__(self,id,cmf,desc,crash_attr,severities,est_cost,srv_life,full_life, exp_crashes, severity_percents, crash_costs, inflation,df):
         translate_dict = {
@@ -117,8 +114,17 @@ if __name__ == "__main__":
     global config
     config = configparser.ConfigParser()
     config.read('config.ini')
-    conn_details = urllib.parse.quote_plus(
-        "DRIVER={ODBC Driver 17 for SQL Server};" + config['ConnectionStrings']['CatScan'])
+    # server and db info to make the data pull
+    server = 'SAMLAPTOP'
+    database = 'CATSCAN'
+
+    # connection string
+    conn_details = (
+            r"Driver={ODBC Driver 17 for SQL Server};"
+            f"Server={server};"
+            f"Database={database};"
+            r"Trusted_Connection=yes"
+        )
     conn_str = f'mssql+pyodbc:///?odbc_connect={conn_details}'
 
     cmfs = {
@@ -160,6 +166,39 @@ if __name__ == "__main__":
     exp_crash_mi_yr = 2.986707023876080
     severity_percents = pd.Series([0.01037037037,0.008148148, 0.060, 0.3059259259, 0.615555556])  # TEMP values for validation
     exp_crashes_set = exp_crash_mi_yr * seg_len * severity_percents
+    hwy_class = 'Rural_2-Lane'
+    adt = 12500
+    srv_life = 20
+    
+    def aadt_level(adt, conn_str, conn_str_sam=None):
+        """
+        Only used when analyzing a segment. Gets the level grouping of AADT: low, med, high.
+        :param adt: Traffic measurement of the segment
+        :param conn_str: sql connection string
+        :param conn_str_sam:
+        :return:
+        """
+        aadt_cutoffs = pd.read_sql("cutoffs", conn_str)
+
+
+        cutoffs = aadt_cutoffs.loc[aadt_cutoffs.HighwayClass == hwy_class].values[0][1:]
+        if adt > cutoffs[1]:
+            adt_class = 'high'
+        elif adt > cutoffs[0]:
+            adt_class = 'med'
+        else:
+            adt_class = 'low'
+        return adt_class
+
+    def sev_percents(adt,conn_str):
+        level = aadt_level(adt,conn_str)
+        level_table = pd.read_sql(level,conn_str)
+        percents = level_table[hwy_class][:5]
+        return(percents)
+    
+    severity_percents = sev_percents(adt, conn_str)
+    
+    exp_crashes_set = total_crashes / crash_years * severity_percents
     ref_metrics = [full_life_set, exp_crashes_set, severity_percents, crash_costs, inflation]
 
     cmf_list = [CMF(x, *y.values(), *ref_metrics, df) for x,y in zip(cmfs.keys(),cmfs.values())]
@@ -177,4 +216,18 @@ if __name__ == "__main__":
     print(out_df.to_string())
     # [print(y.id) for y in cmf_list]
 
+    combined_cmf = 1
+    cm_cost = 0
+    for c in cmf_list:
+        combined_cmf *= c.adj_cmf
+        cm_cost += c.cost
+    print('Combined CMF: '+str(combined_cmf))
+    
+    benefits_per_yr, total_benefit, bc_ratio = bca(combined_cmf, exp_crashes_set, cm_cost, srv_life, inflation=0.04)
+    print(f"Total Crashes: {total_crashes}")
+    print(f"Expected Crashes: \n{exp_crashes_set}")
+    print(f"\nBenefits per Year: \n{benefits_per_yr}")
+    print(f"\nTotal Expected Benefit: \n{total_benefit}")
+    print(f"\nExpected Cost of Countermeasure: \n{cm_cost}")
+    print(f"\nBenefit/Cost Ratio: \n{bc_ratio}")
 
