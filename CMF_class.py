@@ -1,9 +1,4 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Apr 29 14:26:47 2024
 
-@author: sburt
-"""
 import numpy as np
 import pandas as pd
 import urllib
@@ -17,7 +12,7 @@ def cmf_applicator(df, cmf):
     sev_list = ['100','101','102','103','104']
     if len(crash_attrs)>1:
         filtered_df = df[(df[crash_attrs] == 1).any(axis=1)]
-        totals = filtered_df.groupby('CrashSeverityCode').size()
+        totals = filtered_df.groupby('SeverityCode').size()
         totals.index = totals.index.astype(str)
         for s in sev_list:
             if s not in totals.index:
@@ -28,7 +23,7 @@ def cmf_applicator(df, cmf):
             filtered_df = df
         else:
             filtered_df = df[(df[crash_attrs] == 1).any(axis=1)]
-        totals = filtered_df.groupby('CrashSeverityCode').size()
+        totals = filtered_df.groupby('SeverityCode').size()
         totals.index = totals.index.astype(str)
         for s in sev_list:
             if s not in totals.index:
@@ -56,7 +51,23 @@ def cmf_adjuster(cmf, severity_percents):
     return adj_cmf
 
 class CMF:
-    def __init__(self,id,cmf,desc,crash_attr,severities,est_cost,srv_life,full_life, exp_crashes, severity_percents, crash_costs, inflation,df):
+    def __init__(self,id,id2,desc,cmf,crash_attr,severities,est_cost,srv_life,full_life, exp_crashes, severity_percents, crash_costs, inflation,df):
+        """
+
+        :param id: countermeasure ID
+        :param cmf: crash modification factor
+        :param desc: name/description of the countermeasure
+        :param crash_attr: attributes of crashes to which this cm is applicable
+        :param severities: crash severity levels to which this cm is applicable
+        :param est_cost: estimated cost of this cm
+        :param srv_life: estimated service life of this cm
+        :param full_life: how long we would like this cm to be viable. (usually a multiple of the service life)
+        :param exp_crashes: expected crashes on the road being analyzed
+        :param severity_percents: state background percents for each severity level for current hwy class
+        :param crash_costs: dollar value of economic cost per severity level
+        :param inflation: inflation figure for present value calculation
+        :param df: crash data
+        """
         translate_dict = {
             "Run off road": "RoadwayDeparture",
             "Fixed object": "ct_G",
@@ -84,6 +95,7 @@ class CMF:
         }
         # Basic attributes
         self.id = id
+        self.id2 = id2
         self.cmf = cmf
         self.desc = desc
         self.crash_attr = [translate_dict[key] for key in crash_attr]

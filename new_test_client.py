@@ -18,7 +18,7 @@ def return_data_cap(return_data):
     with open('example io\\return_data.json', 'w', encoding='utf-8') as f:
         json.dump(return_data, f, ensure_ascii=False, indent=4)
 
-io_capture_bool = True
+io_capture_bool = False
 
 global config
 config = configparser.ConfigParser()
@@ -93,10 +93,13 @@ cmfs = {
 
 
 # Send data and metrics to CAT Scan
-json_data = {'message':json.dumps({'Data': data, 'Hwy_class': hwy_class, 'Adt_class': aadt_class,
-                                   'StartDate': start_date, 'EndDate': end_date, 'Cmfs': cmfs, 'Full_life': full_life_set,
-                                   'Aadt': aadt, 'Inflation': inflation, 'SegLen': seg_len, 'ExpCrashMileYear': exp_crash_per_mile_year,
-                                   'ProjectId': '12345'}), 'clientId':'BCA Test 2-20-2024 #17'}
+# json_data = {'message':json.dumps({'Data': data, 'HighwayClass': hwy_class,
+#                                    'StartDate': start_date, 'EndDate': end_date, 'Cmfs': cmfs, 'FullServiceLife': full_life_set,
+#                                    'Aadt': aadt, 'Inflation': inflation, 'SegmentLength': seg_len, 'ExpectedCrashMileYear': exp_crash_per_mile_year,
+#                                    'ProjectId': '12345'}), 'clientId':'BCA Test 2-20-2024 #17'}
+
+with open("example io/CQT_example_data.json") as f:
+    json_data = json.load(f)
 
 if io_capture_bool:
     sent_data_cap(json_data)
@@ -152,4 +155,4 @@ def callback(ch, method, properties, response):
 result_channel.basic_consume(queue=result_queue_name, on_message_callback=callback, auto_ack=True)
 print("Waiting for results. To exit press Ctrl+C")
 result_channel.start_consuming()
-print('here')
+print('-=-=-=-End-=-=-=-')

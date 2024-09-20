@@ -1,36 +1,36 @@
 {
     "ind_cmfs": {
         "4736": {
-            "Description": "description of CMF1",
-            "Est Cost": 60240,
-            "Srv Life": 5,
-            "Benefits/Yr": 103050.07,
-            "Benefit/Cost Ratio": 7.616,
-            "Expected Service Life Benefits": 458760.6
+            "desc": "description of CMF1",
+            "est_cost": 60240,
+            "srv_life": 5,
+            "ben_yr": 136376.28,
+            "ben_cost_ratio": 10.078,
+            "exp_srv_life_ben": 607122.97
         },
         "8101": {
-            "Description": "description of CMF2",
-            "Est Cost": 66264,
-            "Srv Life": 5,
-            "Benefits/Yr": 66540.91,
-            "Benefit/Cost Ratio": 4.47,
-            "Expected Service Life Benefits": 296228.31
+            "desc": "description of CMF2",
+            "est_cost": 66264,
+            "srv_life": 5,
+            "ben_yr": 88060.11,
+            "ben_cost_ratio": 5.916,
+            "exp_srv_life_ben": 392027.96
         },
         "8137": {
-            "Description": "description of CMF3. Wet roads",
-            "Est Cost": 66264,
-            "Srv Life": 5,
-            "Benefits/Yr": 6063.05,
-            "Benefit/Cost Ratio": 0.407,
-            "Expected Service Life Benefits": 26991.62
+            "desc": "description of CMF3. Wet roads",
+            "est_cost": 66264,
+            "srv_life": 5,
+            "ben_yr": 8023.83,
+            "ben_cost_ratio": 0.539,
+            "exp_srv_life_ben": 35720.67
         }
     },
     "comb_cmf": {
-        "comb_cmf": 0.7242404277093527,
-        "crash_reduced": 2.480722511671953,
+        "comb_cmf": 0.7242404277777778,
+        "crash_reduced": 2.4807225103866086,
         "total_cost": 771072.0,
-        "ben_per_year": 162383.11,
-        "total_benefit": 2206839.46,
-        "bc_ratio": 2.862
+        "ben_per_year": 214897.51,
+        "total_benefit": 2920527.29,
+        "bc_ratio": 3.788
     }
 }

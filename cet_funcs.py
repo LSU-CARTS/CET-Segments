@@ -47,10 +47,10 @@ def conversion(df):
     # dict to assign old codes to new codes
     # need string versions of each item in lists to account for variable datatypes in input
     df['MannerCollisionCode'] = df['MannerCollisionCode'].astype(str)
-    man_coll_dict = {'A': ['000', '0'], 'B': ['300', '400', '401', '402'], 'C': ['200', '201', '202'], 'D': ['105'],
-                     'E': ['100'], 'F': ['101', '500'],
-                     'G': ['102'], 'H': ['103', '104'], 'I': ['501'], 'J': ['505'], 'K': ['502', '503', '504'],
-                     'Z': ['980', '999', '-1']}
+    man_coll_dict = {'A': ['000', '0'], 'B': ['300'], 'C': ['200'], 'D': ['105'],
+                     'E': ['100', '503'], 'F': ['101'],
+                     'G': ['102'], 'H': ['103'], 'I': ['501', '202'], 'J': ['505'], 'K': ['502'],
+                     'Z': ['980', '999', '-1', '104', '201', '400', '401', '402', '500', '504']}
 
     # applying the above defined dictionary to the new collision codes to create a column of the old collision codes
     df['OldMannerCollisionCode'] = df['MannerCollisionCode'].apply(
@@ -73,9 +73,9 @@ def manner_severity_percents(df):
     inj_severity_list = ['-1','100','101','102','103','104','999']
     mann_coll_list = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'Z']
 
-    pvt = pd.pivot_table(df[['OldMannerCollisionCode', 'CrashSeverityCode']],
+    pvt = pd.pivot_table(df[['OldMannerCollisionCode', 'SeverityCode']],
                          index='OldMannerCollisionCode',
-                         columns='CrashSeverityCode',
+                         columns='SeverityCode',
                          aggfunc=lambda x: len(x) / len(df),  # custom aggfunc to get % of total each pair represents
                          fill_value=0,
                          margins=True)
@@ -132,16 +132,16 @@ def dummy_wrapper(df):
     :return: dataframe with dummy columns appended
     """
     # get dummy vars for Road Surface
-    surf_dummy_vals = [['DRY','OTHER'],['WET','ICE/FROST','SLUSH']]  # grouping of surface condition values
+    surf_dummy_vals = [['0','000','980'],['107','100','104']]  # grouping of surface condition values
     surf_dummy_cols = ['DRY','WET']  # surf condition group titles. Dummy column names
     # Create dummies
-    surf_dummies = df['RoadwaySurfaceCondition'].apply(dummies, args=[surf_dummy_vals,surf_dummy_cols])
+    surf_dummies = df['SurfaceConditionCode'].apply(dummies, args=[surf_dummy_vals,surf_dummy_cols])
     surf_result = pd.concat(surf_dummies.tolist(), ignore_index=True)  # manipulate dummy output into correct format
 
     # get dummy vars for Light Condition (same process as Road Surface)
-    light_dummy_vals = [['DAYLIGHT','DAWN/DUSK'],['DARK - STREET LIGHTS AT INTERSECTION ONLY','DARK - NOT LIGHTED','DARK - CONTINUOUS STREET LIGHTS']]
+    light_dummy_vals = [['100','200'],['301','302','300']]
     light_dummy_cols = ['LIGHT','DARK']
-    light_dummies = df['LightCondition'].apply(dummies, args=[light_dummy_vals,light_dummy_cols])
+    light_dummies = df['LightingCode'].apply(dummies, args=[light_dummy_vals,light_dummy_cols])
     light_result = pd.concat(light_dummies.tolist(), ignore_index=True)
 
     # custom dummies for Manner Collision
@@ -153,10 +153,8 @@ def dummy_wrapper(df):
     # get dummies for Manner Collision
     df = pd.get_dummies(df,columns=['OldMannerCollisionCode'], prefix='Mann_Coll')  # Can just use regular pandas dummy func for this
 
-    df = pd.get_dummies(df, columns=['Crash_Type'], prefix='ct')
+    df = pd.get_dummies(df, columns=['CrashType'], prefix='ct')
 
-    # dummy_result = pd.merge(surf_result, light_result, left_index=True, right_index=True)  # combine dummy dfs
-    # df_out = pd.merge(df, dummy_result, left_index=True, right_index=True)  # add dummy df to output df
     df_out = pd.concat(objs=[df,surf_result,light_result,mann_coll_result],axis=1)  # combine all dummy fields + df
     df_out = filler(df_out)  # get zero-value dummy columns for values that don't appear in mann coll or crash type
 
@@ -243,7 +241,7 @@ def cmf_applicator(df, cmf: dict):
     sev_list = ['100','101','102','103','104']
     if len(crash_attrs)>1:
         filtered_df = df[(df[crash_attrs] == 1).any(axis=1)]
-        totals = filtered_df.groupby('CrashSeverityCode').size()
+        totals = filtered_df.groupby('SeverityCode').size()
         totals.index = totals.index.astype(str)
         for s in sev_list:
             if s not in totals.index:
@@ -254,7 +252,7 @@ def cmf_applicator(df, cmf: dict):
             filtered_df = df
         else:
             filtered_df = df[(df[crash_attrs] == 1).any(axis=1)]
-        totals = filtered_df.groupby('CrashSeverityCode').size()
+        totals = filtered_df.groupby('SeverityCode').size()
         totals.index = totals.index.astype(str)
         for s in sev_list:
             if s not in totals.index:
@@ -302,6 +300,10 @@ def bca(final_cmf, crashes_per_yr, cm_cost, srv_life, inflation):
     return benefits_per_yr, total_benefit, bc_ratio
 
 if __name__ == "__main__":
+
+    # This section for testing only. Not for production use.
+    print("=====Running Test=====")
+
     doc_string = "069-02_16-18.xlsx"
     df = pd.read_excel(io=doc_string,sheet_name='segment - mod')
 
@@ -322,7 +324,6 @@ if __name__ == "__main__":
 
     # ==============INPUTS==================================
     hwy_class = 'Rural_2-Lane'
-    # TODO Add a cost to each cmf
     cmfs = {
         'cmf1':
         {

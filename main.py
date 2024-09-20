@@ -12,7 +12,7 @@ from math import prod
 import traceback
 import pyodbc
 from CMF_class import CMF
-from cet_funcs import conversion, dummy_wrapper, get_state_percents, pv
+from cet_funcs import conversion, dummy_wrapper, get_state_percents, pv, aadt_level
 
 def publish_event(channel, method, body,exchange):
     channel.basic_publish(exchange=exchange, routing_key='' ,body=body)
@@ -65,47 +65,53 @@ def cet_seg(data, projectId, clientId):
     conn_str = f'mssql+pyodbc:///?odbc_connect={conn_details}'
 
     # unpack json data
-    hwy_class, aadt_class, startDate, endDate = data['Hwy_class'], data['Adt_class'], data['StartDate'], data['EndDate']
-    seg_len, exp_crash_mi_yr = data['SegLen'], data['ExpCrashMileYear']
-    cmfs, full_life, inflation = data['Cmfs'], data['Full_life'], data['Inflation']
+    hwy_class, startDate, endDate = data['HighwayClass'], data['StartDate'], data['EndDate']
+    seg_len, exp_crash_mi_yr, aadt = data['SegmentLength'], data['ExpectedCrashMileYear'], data['Aadt']
+    cmfs, full_life, inflation = data['Cmfs'], data['FullServiceLife'], data['Inflation']
     df = pd.DataFrame(data['Data'])
+    hwy_class = hwy_class.replace(" ", "_")
+    aadt_class = aadt_level(aadt, hwy_class, conn_str)
 
-    # get year information
-    from_year = int(startDate[0:4])
-    to_year = int(endDate[0:4])
-    crash_years = to_year - from_year + 1
-
-    # Get background percents for current hwy class/adt class.
-    # severity_percents = get_state_percents(aadt_class, hwy_class, conn_str)
-
+    # Convert new Crash Manners to Old
     df = conversion(df)
+    # Get binary columns for surf cond, lighting, and some crash manners
     df = dummy_wrapper(df)
+
     total_crashes = len(df.index)
-    # crash_costs = pd.read_sql('CrashPrices', conn_str)['Price'].apply(int).to_list()
-    crash_costs = [1710561.00, 489446.00, 173578.00, 58636.00, 24982.00]  # TEMP values for validation
-    severity_percents = pd.Series([0.01037037037,0.008148148, 0.060, 0.3059259259, 0.615555556])  # TEMP values for validation
+
+    # Get cost per crash severity level
+    crash_costs = pd.read_sql('CrashPrices', conn_str)['Price'].apply(int).to_list()
+    # Get background percents for current hwy class/adt class.
+    severity_percents = get_state_percents(aadt_class, hwy_class, conn_str)
+
+    # Temp values for comparing to example CET Excel file
+    # crash_costs = [1710561.00, 489446.00, 173578.00, 58636.00, 24982.00]  # TEMP values for validation
+    # severity_percents = pd.Series([0.01037037037,0.008148148, 0.060, 0.3059259259, 0.615555556])  # TEMP values for validation
+
     exp_crashes = exp_crash_mi_yr * seg_len * severity_percents
 
     ref_metrics = [full_life, exp_crashes, severity_percents, crash_costs, inflation]
 
-
+    # Unpack all values and dynamically create all CMF objects
     cmf_list = [CMF(x, *y.values(), *ref_metrics, df) for x, y in zip(cmfs.keys(), cmfs.values())]
-    cmf_dict = {c.id: {'Description': c.desc,
-                       'Est Cost': c.est_cost,
-                       'Srv Life': c.srv_life,
-                       'Benefits/Yr': c.ben_per_year,
-                       'Benefit/Cost Ratio': c.bc_ratio,
-                       'Expected Service Life Benefits': c.total_benefit} for c in cmf_list}
+    cmf_dict = {c.id: {'desc': c.desc,
+                       'est_cost': c.est_cost,
+                       'srv_life': c.srv_life,
+                       'ben_yr': c.ben_per_year,
+                       'ben_cost_ratio': c.bc_ratio,
+                       'exp_srv_life_ben': c.total_benefit} for c in cmf_list}
 
     # combined cmf results
-    combined_cmf = prod([c.adj_cmf for c in cmf_list])
-    crash_reduced = exp_crashes * (1-combined_cmf)
+    # TODO: add relevant items for Jason to use in interactive web output
+    #   Items will be metrics/calculated values used in the bottom line of the summary page in CET Excel file
+    combined_cmf = round(prod([c.adj_cmf for c in cmf_list]), 4)
+    crash_reduced = round(sum(exp_crashes * (1-combined_cmf)))
     total_cost = sum([c.cost for c in cmf_list])
     ben_per_year = round(sum(crash_costs * crash_reduced),2)
     total_benefit = round(-pv(inflation, full_life, ben_per_year), 2)
     bc_ratio = round(total_benefit/total_cost, 3)
     combined_results = {'comb_cmf': combined_cmf,
-                        'crash_reduced':sum(crash_reduced),
+                        'crash_reduced':crash_reduced,
                         'total_cost':total_cost,
                         'ben_per_year': ben_per_year,
                         'total_benefit':total_benefit,
