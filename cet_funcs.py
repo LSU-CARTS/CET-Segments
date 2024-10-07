@@ -132,7 +132,7 @@ def dummy_wrapper(df):
     :return: dataframe with dummy columns appended
     """
     # get dummy vars for Road Surface
-    surf_dummy_vals = [['0','000','980'],['107','100','104']]  # grouping of surface condition values
+    surf_dummy_vals = [['0','000','980'],['106','107','100','104']]  # grouping of surface condition values
     surf_dummy_cols = ['DRY','WET']  # surf condition group titles. Dummy column names
     # Create dummies
     surf_dummies = df['SurfaceConditionCode'].apply(dummies, args=[surf_dummy_vals,surf_dummy_cols])
@@ -200,7 +200,6 @@ def aadt_level(adt, hwy_class, conn_str):
     Only used when analyzing a segment. Gets the level grouping of AADT: low, med, high.
     :param adt: Traffic measurement of the segment
     :param conn_str: sql connection string
-    :param conn_str_sam:
     :return:
     """
     aadt_cutoffs = pd.read_sql("cutoffs", conn_str)
@@ -213,6 +212,7 @@ def aadt_level(adt, hwy_class, conn_str):
     else:
         adt_class = 'low'
     return adt_class
+
 
 def get_state_percents(adt_class, hwy_class, conn_str):
     """
@@ -233,6 +233,7 @@ def get_state_percents(adt_class, hwy_class, conn_str):
     # select rows relevant to other crash factors
     other_state_percents = state_percents.iloc[44:]
     return severity_state_percents[hwy_class]
+
 
 def cmf_applicator(df, cmf: dict):
     # needs to give a count of all rows where any of the crash attr columns are true (or ==1)
@@ -261,6 +262,7 @@ def cmf_applicator(df, cmf: dict):
 
     return totals/len(df.index)
 
+
 def cmf_adjuster(cmf:dict, severity_percents):
     """
     Gets the final adjusted CMF after accounting for expected percents and applicable severity levels.
@@ -279,14 +281,21 @@ def cmf_adjuster(cmf:dict, severity_percents):
     adj_cmf = ((cmf['cmf'] - 1) * per_veh_effected) + 1
     return adj_cmf
 
+
 def pv(r: float, n: int, pmt):
-    # takes in rate (r), number of periods (n), and payment size (pmt)
-    # future value (f) is not needed and therefore will always be 0
-    # 'when' (or: when payments are made, beginning or end of period (w)) is not needed, will always be 0
-    f = 0
-    w = 0
+    """
+    Takes in rate (r), number of periods (n), and payment size (pmt)
+    Future value (f) is not needed and therefore will always be 0
+    'when' (or: when payments are made, beginning or end of period (w)) is not needed, will always be 0
+    :param r: rate. In this project, always inflation.
+    :param n: number of periods. In this project, service life.
+    :param pmt: Payment size. In this project, monetary benefit of countermeasure.
+    :return:
+    """
+    f = 0.0
+    w = 0.0
     present_v = ((r + 1) ** (-n)*(-f * r - pmt * ((r + 1)**n - 1) * (r*w + 1)))/r
-    return present_v
+    return -present_v
 
 def bca(final_cmf, crashes_per_yr, cm_cost, srv_life, inflation):
     crash_costs = [1710561.00, 489446.00, 173578.00, 58636.00, 24982.00]  # TEMP Values
@@ -294,7 +303,7 @@ def bca(final_cmf, crashes_per_yr, cm_cost, srv_life, inflation):
 
     crash_reduction = crf * crashes_per_yr
     benefits_per_yr = sum(crash_costs * crash_reduction)
-    total_benefit = -pv(inflation, srv_life, benefits_per_yr)
+    total_benefit = pv(inflation, srv_life, benefits_per_yr)
     bc_ratio = total_benefit/cm_cost
 
     return benefits_per_yr, total_benefit, bc_ratio

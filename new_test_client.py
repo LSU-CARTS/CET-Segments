@@ -5,6 +5,7 @@ import pandas as pd
 import json
 import configparser
 import urllib
+from cet_funcs import aadt_level
 
 doc_string = "069-02_16-18.xlsx"
 df = pd.read_excel(doc_string, sheet_name='segment - mod')
@@ -18,7 +19,7 @@ def return_data_cap(return_data):
     with open('example io\\return_data.json', 'w', encoding='utf-8') as f:
         json.dump(return_data, f, ensure_ascii=False, indent=4)
 
-io_capture_bool = False
+io_capture_bool = True
 
 global config
 config = configparser.ConfigParser()
@@ -27,29 +28,10 @@ conn_details = urllib.parse.quote_plus(
     "DRIVER={ODBC Driver 17 for SQL Server};" + config['ConnectionStrings']['CatScan'])
 conn_str = f'mssql+pyodbc:///?odbc_connect={conn_details}'
 
-def aadt_level(adt, conn_str, conn_str_sam=None):
-    """
-    Only used when analyzing a segment. Gets the level grouping of AADT: low, med, high.
-    :param adt: Traffic measurement of the segment
-    :param conn_str: sql connection string
-    :param conn_str_sam:
-    :return:
-    """
-    aadt_cutoffs = pd.read_sql("cutoffs", conn_str)
-
-    cutoffs = aadt_cutoffs.loc[aadt_cutoffs.HighwayClass == hwy_class].values[0][1:]
-    if adt > cutoffs[1]:
-        adt_class = 'high'
-    elif adt > cutoffs[0]:
-        adt_class = 'med'
-    else:
-        adt_class = 'low'
-    return adt_class
-
 # ===Road Features===
 hwy_class = "Rural_2-Lane"
 aadt = 12500
-aadt_class = aadt_level(aadt,conn_str)
+# aadt_class = aadt_level(aadt,conn_str)
 
 # Start and End date
 start_date = '2016-1-1'
@@ -101,8 +83,8 @@ cmfs = {
 with open("example io/CQT_example_data.json") as f:
     json_data = json.load(f)
 
-if io_capture_bool:
-    sent_data_cap(json_data)
+# if io_capture_bool:
+#     sent_data_cap(json_data)
 
 # Send jobs to the worker queue
 connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
@@ -137,12 +119,20 @@ def callback(ch, method, properties, response):
         print(f"Received result")
         # Process the result here
         response = json.loads(response)
+        print(response)
+        print('\n')
         ind_cmfs = response['ind_cmfs']
         comb_cmf = response['comb_cmf']
+        exp_crashes = response['exp_crashes']
+        crash_costs = response['crash_costs']
         df_resp = pd.DataFrame.from_dict(ind_cmfs,orient='index')
         print(df_resp.to_string())
         print('\n')
         print(comb_cmf)
+        print('\n')
+        print(exp_crashes)
+        print('\n')
+        print(crash_costs)
 
         if io_capture_bool:
             return_data_cap(response)

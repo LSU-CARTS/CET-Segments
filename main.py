@@ -90,33 +90,44 @@ def cet_seg(data, projectId, clientId):
 
     exp_crashes = exp_crash_mi_yr * seg_len * severity_percents
 
+    # Add severity index to expected crashes
+    sev_list = ['Fatal','Serious','Minor','Possible','PDO']
+    exp_crashes.index= sev_list
+    # Create Crash Costs dict with severities as keys
+    crash_costs_dict = dict(zip(sev_list, crash_costs))
+
     ref_metrics = [full_life, exp_crashes, severity_percents, crash_costs, inflation]
 
     # Unpack all values and dynamically create all CMF objects
     cmf_list = [CMF(x, *y.values(), *ref_metrics, df) for x, y in zip(cmfs.keys(), cmfs.values())]
     cmf_dict = {c.id: {'desc': c.desc,
+                       'cmf': c.cmf,
                        'est_cost': c.est_cost,
                        'srv_life': c.srv_life,
                        'ben_yr': c.ben_per_year,
                        'ben_cost_ratio': c.bc_ratio,
-                       'exp_srv_life_ben': c.total_benefit} for c in cmf_list}
+                       'exp_srv_life_ben': c.total_benefit,
+                       'full_cost':c.full_cost} for c in cmf_list}
 
     # combined cmf results
     # TODO: add relevant items for Jason to use in interactive web output
     #   Items will be metrics/calculated values used in the bottom line of the summary page in CET Excel file
     combined_cmf = round(prod([c.adj_cmf for c in cmf_list]), 4)
-    crash_reduced = round(sum(exp_crashes * (1-combined_cmf)))
-    total_cost = sum([c.cost for c in cmf_list])
-    ben_per_year = round(sum(crash_costs * crash_reduced),2)
-    total_benefit = round(-pv(inflation, full_life, ben_per_year), 2)
+    crash_reduced = round(sum(exp_crashes * (1-combined_cmf)),2)
+    total_cost = sum([c.full_cost for c in cmf_list])
+    ben_per_year = round(sum([cc * crash_reduced for cc in crash_costs]),2)
+    total_benefit = round(pv(inflation, full_life, ben_per_year), 2)
     bc_ratio = round(total_benefit/total_cost, 3)
+
     combined_results = {'comb_cmf': combined_cmf,
-                        'crash_reduced':crash_reduced,
-                        'total_cost':total_cost,
+                        'crash_reduced': crash_reduced,
+                        'total_cost': total_cost,
                         'ben_per_year': ben_per_year,
-                        'total_benefit':total_benefit,
+                        'total_benefit': total_benefit,
                         'bc_ratio': bc_ratio}
-    outputDict = {'ind_cmfs': cmf_dict, 'comb_cmf': combined_results}
+
+    outputDict = {'ind_cmfs': cmf_dict, 'comb_cmf': combined_results,
+                  'exp_crashes': round(exp_crashes,4).to_dict(), 'crash_costs':crash_costs_dict}
 
     return json.dumps(outputDict)
 

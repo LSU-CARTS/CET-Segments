@@ -107,12 +107,12 @@ class CMF:
         percent_dist = cmf_applicator(df,self)
         self.portion = sum(percent_dist)
         self.adj_cmf = cmf_adjuster(self, severity_percents)
-        self.cost = est_cost * full_life/srv_life  # cost for multiple service lives
+        self.full_cost = est_cost * full_life / srv_life  # cost for multiple service lives
         # BCA attributes
         self.crf = 1 - self.adj_cmf
         self.crash_reduction = self.crf * exp_crashes
         self.ben_per_year = round(sum(crash_costs * self.crash_reduction), 2)
-        self.total_benefit = round(-pv(inflation, self.srv_life, self.ben_per_year), 2)
+        self.total_benefit = round(pv(inflation, self.srv_life, self.ben_per_year), 2)
         self.bc_ratio = round(self.total_benefit/self.est_cost, 3)
 
 
@@ -213,7 +213,7 @@ if __name__ == "__main__":
     cm_cost = 0
     for c in cmf_list:
         combined_cmf *= c.adj_cmf
-        cm_cost += c.cost
+        cm_cost += c.full_cost
     print('Combined CMF: '+str(combined_cmf))
     
     benefits_per_yr, total_benefit, bc_ratio = bca(combined_cmf, exp_crashes_set, cm_cost, srv_life, inflation=0.04)

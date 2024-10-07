@@ -11,7 +11,7 @@ import urllib
 import configparser
 import sqlalchemy
 from math import prod
-from cet_funcs import conversion, dummy_wrapper, bca, pv
+from cet_funcs import conversion, dummy_wrapper, bca, pv, aadt_level
 
 doc_string = "069-02_16-18.xlsx"
 df = pd.read_excel(io=doc_string, sheet_name='segment - mod')
@@ -35,26 +35,6 @@ conn_details = (
 conn_str = f'mssql+pyodbc:///?odbc_connect={conn_details}'
 
 hwy_class = 'Rural_2-Lane'
-
-def aadt_level(adt, conn_str, conn_str_sam=None):
-    """
-    Only used when analyzing a segment. Gets the level grouping of AADT: low, med, high.
-    :param adt: Traffic measurement of the segment
-    :param conn_str: sql connection string
-    :param conn_str_sam:
-    :return:
-    """
-    aadt_cutoffs = pd.read_sql("cutoffs", conn_str)
-
-
-    cutoffs = aadt_cutoffs.loc[aadt_cutoffs.HighwayClass == hwy_class].values[0][1:]
-    if adt > cutoffs[1]:
-        adt_class = 'high'
-    elif adt > cutoffs[0]:
-        adt_class = 'med'
-    else:
-        adt_class = 'low'
-    return adt_class
 
 def sev_percents(adt,conn_str):
     level = aadt_level(adt,conn_str)

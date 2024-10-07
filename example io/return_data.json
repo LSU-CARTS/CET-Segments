@@ -1,36 +1,56 @@
 {
     "ind_cmfs": {
-        "4736": {
-            "desc": "description of CMF1",
-            "est_cost": 60240,
-            "srv_life": 5,
-            "ben_yr": 136376.28,
-            "ben_cost_ratio": 10.078,
-            "exp_srv_life_ben": 607122.97
+        "7": {
+            "desc": "Five to six lane conversion",
+            "cmf": 1.03,
+            "est_cost": 100000,
+            "srv_life": 10,
+            "ben_yr": -796566.06,
+            "ben_cost_ratio": -67.949,
+            "exp_srv_life_ben": -6794870.06,
+            "full_cost": 200000.0
         },
-        "8101": {
-            "desc": "description of CMF2",
-            "est_cost": 66264,
-            "srv_life": 5,
-            "ben_yr": 88060.11,
-            "ben_cost_ratio": 5.916,
-            "exp_srv_life_ben": 392027.96
+        "82": {
+            "desc": "Install chevron signs on horizontal curves",
+            "cmf": 0.9,
+            "est_cost": 100000,
+            "srv_life": 10,
+            "ben_yr": 247554.36,
+            "ben_cost_ratio": 21.117,
+            "exp_srv_life_ben": 2111688.9,
+            "full_cost": 200000.0
         },
-        "8137": {
-            "desc": "description of CMF3. Wet roads",
-            "est_cost": 66264,
-            "srv_life": 5,
-            "ben_yr": 8023.83,
-            "ben_cost_ratio": 0.539,
-            "exp_srv_life_ben": 35720.67
+        "89": {
+            "desc": "Add lane lines on multilane roadway segments",
+            "cmf": 0.82,
+            "est_cost": 100000,
+            "srv_life": 10,
+            "ben_yr": 236697.52,
+            "ben_cost_ratio": 20.191,
+            "exp_srv_life_ben": 2019077.86,
+            "full_cost": 200000.0
         }
     },
     "comb_cmf": {
-        "comb_cmf": 0.7242404277777778,
-        "crash_reduced": 2.4807225103866086,
-        "total_cost": 771072.0,
-        "ben_per_year": 214897.51,
-        "total_benefit": 2920527.29,
-        "bc_ratio": 3.788
+        "comb_cmf": 1.0113,
+        "crash_reduced": -6.02,
+        "total_cost": 600000.0,
+        "ben_per_year": -17530233.98,
+        "total_benefit": -260805615.34,
+        "bc_ratio": -434.676
+    },
+    "exp_crashes": {
+        "Fatal": 0.8443,
+        "Serious": 2.955,
+        "Minor": 22.5845,
+        "Possible": 112.2891,
+        "PDO": 394.0672
+    },
+    "crash_costs": {
+        "Fatal": 2036913,
+        "Serious": 582241,
+        "Minor": 198021,
+        "Possible": 66461,
+        "PDO": 28363
     }
 }
