@@ -100,14 +100,16 @@ def cet_seg(data, projectId, clientId):
 
     # Unpack all values and dynamically create all CMF objects
     cmf_list = [CMF(x, *y.values(), *ref_metrics, df) for x, y in zip(cmfs.keys(), cmfs.values())]
-    cmf_dict = {c.id: {'desc': c.desc,
-                       'cmf': c.cmf,
-                       'est_cost': c.est_cost,
-                       'srv_life': c.srv_life,
-                       'ben_yr': c.ben_per_year,
-                       'ben_cost_ratio': c.bc_ratio,
-                       'exp_srv_life_ben': c.total_benefit,
-                       'full_cost':c.full_cost} for c in cmf_list}
+    cmf_dict = [{
+        'id': c.id,
+        'desc': c.desc,
+        'cmf': c.cmf,
+        'est_cost': c.est_cost,
+        'srv_life': c.srv_life,
+        'ben_yr': c.ben_per_year,
+        'ben_cost_ratio': c.bc_ratio,
+        'exp_srv_life_ben': c.total_benefit,
+        'full_cost':c.full_cost} for c in cmf_list]
 
     # combined cmf results
     # TODO: add relevant items for Jason to use in interactive web output
@@ -126,8 +128,14 @@ def cet_seg(data, projectId, clientId):
                         'total_benefit': total_benefit,
                         'bc_ratio': bc_ratio}
 
-    outputDict = {'ind_cmfs': cmf_dict, 'comb_cmf': combined_results,
-                  'exp_crashes': round(exp_crashes,4).to_dict(), 'crash_costs':crash_costs_dict}
+    outputDict = {
+        'clientId' : clientId,
+        'projectId' : projectId,
+        'ind_cmfs': cmf_dict,
+        'comb_cmf': combined_results,
+        'exp_crashes': round(exp_crashes,4).to_dict(),
+        'crash_costs':crash_costs_dict
+    }
 
     return json.dumps(outputDict)
 
@@ -145,7 +153,7 @@ def on_request(ch, method, props, body):
         response = cet_seg(crashdata, projectId, clientId)  # Actual CatScan Calculation
         status_event = {'ClientId':clientId,'Status': 'Success', 'Message': 'CET Calculation finished successfully.'}
         publish_statusevent(ch, json.dumps(status_event), 'JobStatus')
-        publish_event(ch, method, response, 'CETSegmentsResults')
+        publish_event(ch, method, response, config['RabbitMQ']['DestinationQueue'])
 
     except Exception as e:
         print(e)
@@ -171,9 +179,9 @@ def main():
             }
         ))
     channel = connection.channel()
-    channel.queue_declare(queue=config['RabbitMQ']['Queue'],durable=True)
+    channel.queue_declare(queue=config['RabbitMQ']['SourceQueue'],durable=True)
     channel.basic_qos(prefetch_count=1)
-    channel.basic_consume(queue=config['RabbitMQ']['Queue'], on_message_callback=on_request)
+    channel.basic_consume(queue=config['RabbitMQ']['SourceQueue'], on_message_callback=on_request)
 
     print(" [x] Awaiting CET Requests...")
     channel.start_consuming()
@@ -181,7 +189,7 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-        print(" [x] Awaiting CAT Scan Requests...")
+        print(" [x] Awaiting CET Requests...")
 
         # logging.debug('Startup Successful. Service is now running.')
     except KeyboardInterrupt:
