@@ -19,7 +19,7 @@ def return_data_cap(return_data):
     with open('example io\\return_data.json', 'w', encoding='utf-8') as f:
         json.dump(return_data, f, ensure_ascii=False, indent=4)
 
-io_capture_bool = True
+io_capture_bool = False
 
 global config
 config = configparser.ConfigParser()
@@ -92,7 +92,7 @@ channel = connection.channel()
 
 # Prepare and send your job data
 channel.basic_publish(exchange='',
-                      routing_key='CETSegments',
+                      routing_key=config['RabbitMQ']['SourceQueue'],
                       body=json.dumps(json_data))
 print("Job sent")
 
@@ -104,14 +104,14 @@ result_connection = pika.BlockingConnection(pika.ConnectionParameters('localhost
 result_channel = result_connection.channel()
 
 # Declare an exchange where the worker posts results
-result_channel.exchange_declare(exchange='CETSegmentsResults', exchange_type='fanout')
+result_channel.exchange_declare(exchange=config['RabbitMQ']['DestinationQueue'], exchange_type='fanout')
 
 # Create a unique queue for this client
 result_queue = result_channel.queue_declare(queue='', exclusive=True)
 result_queue_name = result_queue.method.queue
 
 # Bind the client's queue to the exchange
-result_channel.queue_bind(exchange='CETSegmentsResults', queue=result_queue_name)
+result_channel.queue_bind(exchange=config['RabbitMQ']['DestinationQueue'], queue=result_queue_name)
 
 def callback(ch, method, properties, response):
     try:
@@ -125,7 +125,7 @@ def callback(ch, method, properties, response):
         comb_cmf = response['comb_cmf']
         exp_crashes = response['exp_crashes']
         crash_costs = response['crash_costs']
-        df_resp = pd.DataFrame.from_dict(ind_cmfs,orient='index')
+        df_resp = pd.DataFrame(ind_cmfs)
         print(df_resp.to_string())
         print('\n')
         print(comb_cmf)
@@ -140,6 +140,7 @@ def callback(ch, method, properties, response):
         ch.close()
     except Exception as e:
         print(e)
+        raise e
 
 
 result_channel.basic_consume(queue=result_queue_name, on_message_callback=callback, auto_ack=True)
