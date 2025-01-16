@@ -77,7 +77,7 @@ class CMF:
             "Wet road": "WET",
             "Nighttime": "DARK",
             "Head on": "Mann_Coll_C",
-            "Vehicle/Pedestrian": "Pedestrian",
+            "Vehicle/pedestrian": "Pedestrian",
             "Parking related": "ct_E",
             "Single Vehicle": "SingleVehicle",
             "Vehicle/bicycle": "Bicycle",
