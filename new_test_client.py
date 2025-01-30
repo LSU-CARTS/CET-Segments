@@ -43,35 +43,35 @@ inflation = 0.04
 seg_len = 3.012
 exp_crash_per_mile_year = 2.98670702387608
 
-cmfs = {
-    '4736':
-        {
-            'cmf': 0.825,
-            'desc': 'description of CMF1',
-            'crash_attr': ['All'],
-            'severities': ['All'],
-            'est_cost': 60240,
-            'srv_life': 5
-        },
-    '8101':
-        {
-            'cmf': 0.887,
-            'desc': 'description of CMF2',
-            'crash_attr': ['All'],
-            'severities': ['All'],
-            'est_cost': 66264,
-            'srv_life': 5
-        },
-    '8137':
-        {
-            'cmf': 0.861,
-            'desc': 'description of CMF3. Wet roads',
-            'crash_attr': ['Wet road'],
-            'severities': ['All'],
-            'est_cost': 66264,
-            'srv_life': 5
-        }
-}
+# cmfs = {
+#     '4736':
+#         {
+#             'cmf': 0.825,
+#             'desc': 'description of CMF1',
+#             'crash_attr': ['All'],
+#             'severities': ['All'],
+#             'est_cost': 60240,
+#             'srv_life': 5
+#         },
+#     '8101':
+#         {
+#             'cmf': 0.887,
+#             'desc': 'description of CMF2',
+#             'crash_attr': ['All'],
+#             'severities': ['All'],
+#             'est_cost': 66264,
+#             'srv_life': 5
+#         },
+#     '8137':
+#         {
+#             'cmf': 0.861,
+#             'desc': 'description of CMF3. Wet roads',
+#             'crash_attr': ['Wet road'],
+#             'severities': ['All'],
+#             'est_cost': 66264,
+#             'srv_life': 5
+#         }
+# }
 
 
 # Send data and metrics to CAT Scan

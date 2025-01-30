@@ -91,7 +91,8 @@ class CMF:
             "Day time": "LIGHT",
             "Other": "Mann_Coll_Z",
             "Vehicle/Animal": "ct_N",
-            "All": "All"
+            "All": "All",
+            "Non-intersection":"NotIntersection"
         }
         # Basic attributes
         self.id = id
@@ -113,7 +114,10 @@ class CMF:
         self.crash_reduction = self.crf * exp_crashes
         self.ben_per_year = round(sum(crash_costs * self.crash_reduction), 2)
         self.total_benefit = round(pv(inflation, self.srv_life, self.ben_per_year), 2)
-        self.bc_ratio = round(self.total_benefit/self.est_cost, 3)
+        if self.est_cost != 0:
+            self.bc_ratio = round(self.total_benefit/self.est_cost, 3)
+        else:
+            self.bc_ratio = 0
 
 
 if __name__ == "__main__":
