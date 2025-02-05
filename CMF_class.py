@@ -92,7 +92,8 @@ class CMF:
             "Other": "Mann_Coll_Z",
             "Vehicle/Animal": "ct_N",
             "All": "All",
-            "Non-intersection":"NotIntersection"
+            "Non-intersection": "NotIntersection",
+            "Not specified": "All"
         }
         # Basic attributes
         self.id = id

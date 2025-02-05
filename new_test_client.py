@@ -29,19 +29,19 @@ conn_details = urllib.parse.quote_plus(
 conn_str = f'mssql+pyodbc:///?odbc_connect={conn_details}'
 
 # ===Road Features===
-hwy_class = "Rural_2-Lane"
-aadt = 12500
+# hwy_class = "Rural_2-Lane"
+# aadt = 12500
 # aadt_class = aadt_level(aadt,conn_str)
 
 # Start and End date
-start_date = '2016-1-1'
-end_date = '2018-12-31'
-
-full_life_set = 20
-inflation = 0.04
-
-seg_len = 3.012
-exp_crash_per_mile_year = 2.98670702387608
+# start_date = '2016-1-1'
+# end_date = '2018-12-31'
+#
+# full_life_set = 20
+# inflation = 0.04
+#
+# seg_len = 3.012
+# exp_crash_per_mile_year = 2.98670702387608
 
 # cmfs = {
 #     '4736':

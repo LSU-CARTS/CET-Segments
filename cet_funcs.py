@@ -58,51 +58,6 @@ def conversion(df):
 
     return df
 
-def manner_severity_percents(df):
-    """
-    DEPRECIATED; Not needed since percents are dynamically calculated cmf_applicator and cmf_adjuster.
-    Creates pivot table that counts intersection between severity and crash manner values.
-    Adds total row and column.
-    Ensures that all valid values of crash manner and severity are present in the index and columns.
-    :param df: crash data
-    :return: pivot table with percentage of crashes represented by each manner/severity pair.
-    """
-    # mann_coll_list = ['000', '-1', '100', '101', '102', '103', '104', '105', '200', '201', '202', '300', '400', '401',
-    #                   '402', '500', '501', '502', '503', '504', '505', '980', '999']
-
-    inj_severity_list = ['-1','100','101','102','103','104','999']
-    mann_coll_list = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'Z']
-
-    pvt = pd.pivot_table(df[['OldMannerCollisionCode', 'SeverityCode']],
-                         index='OldMannerCollisionCode',
-                         columns='SeverityCode',
-                         aggfunc=lambda x: len(x) / len(df),  # custom aggfunc to get % of total each pair represents
-                         fill_value=0,
-                         margins=True)
-
-    # convert index and columns to strings
-    pvt.index = pvt.index.astype(str)
-    pvt.columns = pvt.columns.astype(str)
-
-    # check if all values in master lists are in the index/columns
-    missing_mann_coll = [m for m in mann_coll_list if m not in pvt.index]
-    missing_inj = [i for i in inj_severity_list if i not in pvt.columns]
-
-    # add rows or columns of zeros for values that were missing
-    for item in missing_mann_coll:
-        pvt.loc[item] = 0
-
-    for col in missing_inj:
-        pvt[col] = 0
-
-    # ensure the totals row/column are at the outside
-    idx = pvt.index.tolist()
-    idx.remove('All')
-    pvt.reindex(idx.append('All'))
-
-    pvt = pvt.sort_index(axis=1)
-
-    return round(pvt, 4)
 
 def filler(df):
     """
@@ -161,40 +116,6 @@ def dummy_wrapper(df):
     return df_out
 
 
-def crash_attr_translate(cmf: dict):
-    # needs to be able to dynamically build filtering criteria
-    # needs edit and return each entire cmf dictionary entry
-    translate_dict ={
-        "Run off road": "RoadwayDeparture",
-        "Fixed object": "ct_G",
-        "Rear end": "Mann_Coll_B",
-        "Speed Related": "SpeedingRelated",
-        "Truck Related": "FMCSAReportableCrash",
-        "Wet road": "WET",
-        "Nighttime": "DARK",
-        "Head on": "Mann_Coll_C",
-        "Vehicle/Pedestrian": "Pedestrian",
-        "Parking related": "ct_E",
-        "Single Vehicle": "SingleVehicle",
-        "Vehicle/bicycle": "Bicycle",
-        "Angle": "Mann_Coll_D",
-        "Multiple vehicle": "MultiVehicle",
-        "Left turn": "Left turn",
-        "Sideswipe": "Sideswipe",
-        "Right turn": "Right turn",
-        "Frontal and opposing direction sideswipe": "Mann_Coll_K",
-        "Dry weather": "DRY",
-        "Day time": "LIGHT",
-        "Other": "Mann_Coll_Z",
-        "Vehicle/Animal": "ct_N",
-        "All": "All"
-    }
-
-    converted_cols = [translate_dict[key] for key in cmf['crash_attr']]
-    cmf['crash_attr'] = converted_cols  # this gets applied in place; no need to return anything
-    # return cmf
-
-
 def aadt_level(adt, hwy_class, conn_str):
     """
     Only used when analyzing a segment. Gets the level grouping of AADT: low, med, high.
@@ -218,8 +139,8 @@ def get_state_percents(adt_class, hwy_class, conn_str):
     """
     Will need to be different for intersection CET
     :param adt_level: low, med, high
+    :param hwy_class: Highway class of current segment
     :param conn_str:
-    :param conn_str_sam:
     :return:
     """
     state_percents = pd.read_sql(adt_class, conn_str)
@@ -233,53 +154,6 @@ def get_state_percents(adt_class, hwy_class, conn_str):
     # select rows relevant to other crash factors
     other_state_percents = state_percents.iloc[44:]
     return severity_state_percents[hwy_class]
-
-
-def cmf_applicator(df, cmf: dict):
-    # needs to give a count of all rows where any of the crash attr columns are true (or ==1)
-    crash_attrs = cmf['crash_attr']
-
-    sev_list = ['100','101','102','103','104']
-    if len(crash_attrs)>1:
-        filtered_df = df[(df[crash_attrs] == 1).any(axis=1)]
-        totals = filtered_df.groupby('SeverityCode').size()
-        totals.index = totals.index.astype(str)
-        for s in sev_list:
-            if s not in totals.index:
-                ser = pd.Series({s:0})
-                totals = pd.concat([totals,ser])
-    else:
-        if crash_attrs[0] == 'All':
-            filtered_df = df
-        else:
-            filtered_df = df[(df[crash_attrs] == 1).any(axis=1)]
-        totals = filtered_df.groupby('SeverityCode').size()
-        totals.index = totals.index.astype(str)
-        for s in sev_list:
-            if s not in totals.index:
-                ser = pd.Series({s: 0})
-                totals = pd.concat([totals, ser])
-
-    return totals/len(df.index)
-
-
-def cmf_adjuster(cmf:dict, severity_percents):
-    """
-    Gets the final adjusted CMF after accounting for expected percents and applicable severity levels.
-    :param cmf: An individual CMF from the cmfs dict.
-    :param severity_percents: The severity percents for the applicable highway class/ AADT level combo.
-    :return:
-    """
-    sev_list = ['100', '101', '102', '103', '104']
-    # multiply portion(scalar) by percents(series)
-    exp_percent = cmf['portion'] * severity_percents  # get expected percent
-    exp_percent.index = sev_list  # set index of expected percent as severity levels
-    if cmf['severities'][0] != 'All':  # if not all severities are selected, adapt accordingly
-        new_sev_list = np.setdiff1d(sev_list, cmf['severities'])  # get the severities not selected
-        exp_percent.loc[new_sev_list] = [0 for s in new_sev_list]  # zero out severities not selected
-    per_veh_effected = sum(exp_percent)
-    adj_cmf = ((cmf['cmf'] - 1) * per_veh_effected) + 1
-    return adj_cmf
 
 
 def pv(r: float, n: int, pmt):
@@ -297,6 +171,7 @@ def pv(r: float, n: int, pmt):
     present_v = ((r + 1) ** (-n)*(-f * r - pmt * ((r + 1)**n - 1) * (r*w + 1)))/r
     return -present_v
 
+
 def bca(final_cmf, crashes_per_yr, cm_cost, srv_life, inflation):
     crash_costs = [1710561.00, 489446.00, 173578.00, 58636.00, 24982.00]  # TEMP Values
     crf = 1 - final_cmf
@@ -312,6 +187,94 @@ if __name__ == "__main__":
 
     # This section for testing only. Not for production use.
     print("=====Running Test=====")
+
+
+    def test_crash_attr_translate(cmf: dict):
+        """
+        Dynamically builds filtering criteria by translating CMF Clearinghouse crash types to names/fields we have.
+        :param cmf: an individual cmf
+        :return:
+        """
+        # needs to be able to dynamically build filtering criteria
+        # needs edit and return each entire cmf dictionary entry
+        translate_dict = {
+            "Run off road": "RoadwayDeparture",
+            "Fixed object": "ct_G",
+            "Rear end": "Mann_Coll_B",
+            "Speed Related": "SpeedingRelated",
+            "Truck Related": "FMCSAReportableCrash",
+            "Wet road": "WET",
+            "Nighttime": "DARK",
+            "Head on": "Mann_Coll_C",
+            "Vehicle/pedestrian": "Pedestrian",
+            "Parking related": "ct_E",
+            "Single Vehicle": "SingleVehicle",
+            "Vehicle/bicycle": "Bicycle",
+            "Angle": "Mann_Coll_D",
+            "Multiple vehicle": "MultiVehicle",
+            "Left turn": "Left turn",
+            "Sideswipe": "Sideswipe",
+            "Right turn": "Right turn",
+            "Frontal and opposing direction sideswipe": "Mann_Coll_K",
+            "Dry weather": "DRY",
+            "Day time": "LIGHT",
+            "Other": "Mann_Coll_Z",
+            "Vehicle/Animal": "ct_N",
+            "Not specified": "All",
+            "Non-intersection": "NotIntersection",
+            "All": "All"
+        }
+
+        converted_cols = [translate_dict[key] for key in cmf['crash_attr']]
+        cmf['crash_attr'] = converted_cols  # this gets applied in place; no need to return anything
+
+
+    def test_cmf_applicator(df, cmf: dict):
+        # needs to give a count of all rows where any of the crash attr columns are true (or ==1)
+        crash_attrs = cmf['crash_attr']
+
+        sev_list = ['100', '101', '102', '103', '104']
+        if len(crash_attrs) > 1:
+            filtered_df = df[(df[crash_attrs] == 1).any(axis=1)]
+            totals = filtered_df.groupby('SeverityCode').size()
+            totals.index = totals.index.astype(str)
+            for s in sev_list:
+                if s not in totals.index:
+                    ser = pd.Series({s: 0})
+                    totals = pd.concat([totals, ser])
+        else:
+            if crash_attrs[0] == 'All':
+                filtered_df = df
+            else:
+                filtered_df = df[(df[crash_attrs] == 1).any(axis=1)]
+            totals = filtered_df.groupby('SeverityCode').size()
+            totals.index = totals.index.astype(str)
+            for s in sev_list:
+                if s not in totals.index:
+                    ser = pd.Series({s: 0})
+                    totals = pd.concat([totals, ser])
+
+        return totals / len(df.index)
+
+
+    def test_cmf_adjuster(cmf: dict, severity_percents):
+        """
+        Gets the final adjusted CMF after accounting for expected percents and applicable severity levels.
+        :param cmf: An individual CMF from the cmfs dict.
+        :param severity_percents: The severity percents for the applicable highway class/ AADT level combo.
+        :return:
+        """
+        sev_list = ['100', '101', '102', '103', '104']
+        # multiply portion(scalar) by percents(series)
+        exp_percent = cmf['portion'] * severity_percents  # get expected percent
+        exp_percent.index = sev_list  # set index of expected percent as severity levels
+        if cmf['severities'][0] != 'All':  # if not all severities are selected, adapt accordingly
+            new_sev_list = np.setdiff1d(sev_list, cmf['severities'])  # get the severities not selected
+            exp_percent.loc[new_sev_list] = [0 for s in new_sev_list]  # zero out severities not selected
+        per_veh_effected = sum(exp_percent)
+        adj_cmf = ((cmf['cmf'] - 1) * per_veh_effected) + 1
+        return adj_cmf
+
 
     doc_string = "069-02_16-18.xlsx"
     df = pd.read_excel(io=doc_string,sheet_name='segment - mod')
@@ -379,12 +342,12 @@ if __name__ == "__main__":
     total_crashes = len(df.index)
     exp_crashes = total_crashes*severity_percents/crash_years  # vector of expected crashes per severity level
 
-    for cmf in cmfs: crash_attr_translate(cmfs[cmf])
-    percent_dist = [cmf_applicator(df, cmfs[x]) for x in cmfs]  # applicable crashes/total crashes per severity level
+    for cmf in cmfs: test_crash_attr_translate(cmfs[cmf])
+    percent_dist = [test_cmf_applicator(df, cmfs[x]) for x in cmfs]  # applicable crashes/total crashes per severity level
 
     for t,cmf in zip(percent_dist,cmfs):  # need to add item to each CMF dict for sum of each item in percent_dist
         cmfs[cmf]['portion'] = sum(t)
-        cmfs[cmf]['adj_cmf'] = cmf_adjuster(cmfs[cmf], severity_percents)  # after this each cmf has a list of expected percents per severity
+        cmfs[cmf]['adj_cmf'] = test_cmf_adjuster(cmfs[cmf], severity_percents)  # after this each cmf has a list of expected percents per severity
         # these need to be filtered by applicable severity levels for that CMF and then summed.
     print(cmfs)
     
