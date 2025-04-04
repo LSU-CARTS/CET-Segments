@@ -5,7 +5,13 @@ import urllib
 import configparser
 from cet_funcs import conversion, dummy_wrapper, bca, pv, aadt_level, get_state_percents
 
-def cmf_applicator(df, cmf):
+def cmf_severity_portions(df, cmf):
+    """
+    Returns the portion of crashes from current dataset to which the current CMF applies as it relates to crash severities.
+    :param df: crash data
+    :param cmf: current cmf object
+    :return: portion: a percent of the crashes to which the cmf applies
+    """
     # needs to give a count of all rows where any of the crash attr columns are true (or ==1)
     crash_attrs = cmf.crash_attr
 
@@ -30,7 +36,8 @@ def cmf_applicator(df, cmf):
                 ser = pd.Series({s: 0})
                 totals = pd.concat([totals, ser])
 
-    return totals/len(df.index)
+    portion = totals/len(df.index)
+    return portion
 
 def cmf_adjuster(cmf, severity_percents):
     """
@@ -106,7 +113,7 @@ class CMF:
         self.srv_life = srv_life
         self.full_life = full_life
         # Calculated attributes
-        percent_dist = cmf_applicator(df,self)
+        percent_dist = cmf_severity_portions(df, self)
         self.portion = sum(percent_dist)
         self.adj_cmf = cmf_adjuster(self, severity_percents)
         self.full_cost = est_cost * full_life / srv_life  # cost for multiple service lives

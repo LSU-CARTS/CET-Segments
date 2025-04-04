@@ -77,8 +77,6 @@ def cet_seg(data, projectId, clientId):
     # Get binary columns for surf cond, lighting, and some crash manners
     df = dummy_wrapper(df)
 
-    total_crashes = len(df.index)
-
     # Get cost per crash severity level
     crash_costs = pd.read_sql('CrashPrices', conn_str)['Price'].apply(int).to_list()
     # Get background percents for current hwy class/adt class.
@@ -112,12 +110,10 @@ def cet_seg(data, projectId, clientId):
         'full_cost':c.full_cost} for c in cmf_list]
 
     # combined cmf results
-    # TODO: add relevant items for Jason to use in interactive web output
-    #   Items will be metrics/calculated values used in the bottom line of the summary page in CET Excel file
     combined_cmf = round(prod([c.adj_cmf for c in cmf_list]), 4)
     crash_reduced = round(sum(exp_crashes * (1-combined_cmf)),2)
     total_cost = sum([c.full_cost for c in cmf_list])
-    ben_per_year = round(sum([cc * crash_reduced for cc in crash_costs]),2)
+    ben_per_year = round(sum([(exp_c-(exp_c*combined_cmf))*cc for exp_c, cc in zip(exp_crashes,crash_costs)]),2)
     total_benefit = round(pv(inflation, full_life, ben_per_year), 2)
     bc_ratio = round(total_benefit/total_cost, 3)
 
