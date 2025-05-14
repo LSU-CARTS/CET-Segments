@@ -86,7 +86,7 @@ class CMF:
             "Head on": "Mann_Coll_C",
             "Vehicle/pedestrian": "Pedestrian",
             "Parking related": "ct_E",
-            "Single Vehicle": "SingleVehicle",
+            "Single vehicle": "SingleVehicle",
             "Vehicle/bicycle": "Bicycle",
             "Angle": "Mann_Coll_D",
             "Multiple vehicle": "MultiVehicle",
@@ -97,7 +97,7 @@ class CMF:
             "Dry weather": "DRY",
             "Day time": "LIGHT",
             "Other": "Mann_Coll_Z",
-            "Vehicle/Animal": "ct_N",
+            "Vehicle/animal": "ct_N",
             "All": "All",
             "Non-intersection": "NotIntersection",
             "Not specified": "All"
