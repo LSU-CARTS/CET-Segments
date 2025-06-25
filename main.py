@@ -89,8 +89,8 @@ def cet_seg(data, projectId, clientId):
     sev_list = ['Fatal','Serious','Minor','Possible','PDO']
     sev_code_list = [100,101,102,103,104]
     sev_dict = dict(zip(sev_list,sev_code_list))
-    sev_counts = Counter(df.SeverityCode)
-    obs_crashes = {sev: sev_counts[str(code)]/years for sev,code in sev_dict.items()}
+    sev_counts = Counter(df.SeverityCode.astype(str))
+    obs_crashes = {sev: round(sev_counts[str(code)]/years,4) for sev,code in sev_dict.items()}
 
     # Calculate Expected Crashes per Year (using value from CAT Scan)
     exp_crashes = exp_crash_mi_yr * seg_len * severity_percents

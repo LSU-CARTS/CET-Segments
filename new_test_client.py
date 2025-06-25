@@ -123,6 +123,7 @@ def callback(ch, method, properties, response):
         comb_cmf = response['comb_cmf']
         exp_crashes = response['exp_crashes']
         obs_crashes = response['obs_crashes']
+        severity_percents = response['severity_percents']
         crash_costs = response['crash_costs']
         df_resp = pd.DataFrame(ind_cmfs)
         print(df_resp.to_string())
@@ -132,6 +133,8 @@ def callback(ch, method, properties, response):
         print(exp_crashes)
         print('\n')
         print(obs_crashes)
+        print('\n')
+        print(severity_percents)
         print('\n')
         print(crash_costs)
 
