@@ -95,8 +95,9 @@ def cet_seg(data, projectId, clientId):
     # Calculate Expected Crashes per Year (using value from CAT Scan)
     exp_crashes = exp_crash_mi_yr * seg_len * severity_percents
 
-    # Add severity index to expected crashes
+    # Add severity index to expected crashes and severity percents
     exp_crashes.index = sev_list
+    severity_percents.index = sev_list
     # Create Crash Costs dict with severities as keys
     crash_costs_dict = dict(zip(sev_list, crash_costs))
 
