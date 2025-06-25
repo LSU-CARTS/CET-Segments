@@ -1,16 +1,14 @@
 import sys
 import os
+from collections import Counter
 import pandas as pd
-import numpy as np
 import pika
-from io import BytesIO
 import json
 import urllib
 import uuid
 import configparser
 from math import prod
 import traceback
-import pyodbc
 from CMF_class import CMF
 from cet_funcs import conversion, dummy_wrapper, get_state_percents, pv, aadt_level
 
@@ -86,11 +84,19 @@ def cet_seg(data, projectId, clientId):
     # crash_costs = [1710561.00, 489446.00, 173578.00, 58636.00, 24982.00]  # TEMP values for validation
     # severity_percents = pd.Series([0.01037037037,0.008148148, 0.060, 0.3059259259, 0.615555556])  # TEMP values for validation
 
+    # Calculate Observed Crashes per Year
+    years = int(endDate.split('-')[0]) - int(startDate.split('-')[0]) + 1
+    sev_list = ['Fatal','Serious','Minor','Possible','PDO']
+    sev_code_list = [100,101,102,103,104]
+    sev_dict = dict(zip(sev_list,sev_code_list))
+    sev_counts = Counter(df.SeverityCode)
+    obs_crashes = {sev: sev_counts[str(code)]/years for sev,code in sev_dict.items()}
+
+    # Calculate Expected Crashes per Year (using value from CAT Scan)
     exp_crashes = exp_crash_mi_yr * seg_len * severity_percents
 
     # Add severity index to expected crashes
-    sev_list = ['Fatal','Serious','Minor','Possible','PDO']
-    exp_crashes.index= sev_list
+    exp_crashes.index = sev_list
     # Create Crash Costs dict with severities as keys
     crash_costs_dict = dict(zip(sev_list, crash_costs))
 
@@ -130,7 +136,9 @@ def cet_seg(data, projectId, clientId):
         'ind_cmfs': cmf_dict,
         'comb_cmf': combined_results,
         'exp_crashes': round(exp_crashes,4).to_dict(),
-        'crash_costs':crash_costs_dict
+        'crash_costs':crash_costs_dict,
+        'severity_percents':round(severity_percents,3).to_dict(),
+        'obs_crashes':obs_crashes
     }
 
     return json.dumps(outputDict)

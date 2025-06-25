@@ -1,16 +1,14 @@
 import pika
-import uuid
-import sys
 import pandas as pd
 import json
 import configparser
 import urllib
-from cet_funcs import aadt_level
 
-doc_string = "069-02_16-18.xlsx"
-df = pd.read_excel(doc_string, sheet_name='segment - mod')
-df['CrashDate'] = df.CrashDate.astype(str)
-data = df.to_dict(orient='records')  # .to_json(orient='records')
+# Old example data
+# doc_string = "069-02_16-18.xlsx"
+# df = pd.read_excel(doc_string, sheet_name='segment - mod')
+# df['CrashDate'] = df.CrashDate.astype(str)
+# data = df.to_dict(orient='records')  # .to_json(orient='records')
 
 def sent_data_cap(sent_data):
     with open('example io\\sent_data.json', 'w', encoding='utf-8') as f:
@@ -124,6 +122,7 @@ def callback(ch, method, properties, response):
         ind_cmfs = response['ind_cmfs']
         comb_cmf = response['comb_cmf']
         exp_crashes = response['exp_crashes']
+        obs_crashes = response['obs_crashes']
         crash_costs = response['crash_costs']
         df_resp = pd.DataFrame(ind_cmfs)
         print(df_resp.to_string())
@@ -131,6 +130,8 @@ def callback(ch, method, properties, response):
         print(comb_cmf)
         print('\n')
         print(exp_crashes)
+        print('\n')
+        print(obs_crashes)
         print('\n')
         print(crash_costs)
 

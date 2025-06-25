@@ -1,50 +1,33 @@
 {
-    "ind_cmfs": {
-        "7": {
+    "clientId": "8LCGDR5mqbnZo7Ua1NgJjw",
+    "projectId": 6861,
+    "ind_cmfs": [
+        {
+            "id": "7",
             "desc": "Five to six lane conversion",
-            "cmf": 1.03,
-            "est_cost": 100000,
-            "srv_life": 10,
-            "ben_yr": -796566.06,
-            "ben_cost_ratio": -67.949,
-            "exp_srv_life_ben": -6794870.06,
-            "full_cost": 200000.0
-        },
-        "82": {
-            "desc": "Install chevron signs on horizontal curves",
-            "cmf": 0.9,
-            "est_cost": 100000,
-            "srv_life": 10,
-            "ben_yr": 247554.36,
-            "ben_cost_ratio": 21.117,
-            "exp_srv_life_ben": 2111688.9,
-            "full_cost": 200000.0
-        },
-        "89": {
-            "desc": "Add lane lines on multilane roadway segments",
             "cmf": 0.82,
-            "est_cost": 100000,
-            "srv_life": 10,
-            "ben_yr": 236697.52,
-            "ben_cost_ratio": 20.191,
-            "exp_srv_life_ben": 2019077.86,
-            "full_cost": 200000.0
+            "est_cost": 1000000,
+            "srv_life": 20,
+            "ben_yr": 5905250.87,
+            "ben_cost_ratio": 87.855,
+            "exp_srv_life_ben": 87855221.36,
+            "full_cost": 1000000.0
         }
-    },
+    ],
     "comb_cmf": {
-        "comb_cmf": 1.0113,
-        "crash_reduced": -6.02,
-        "total_cost": 600000.0,
-        "ben_per_year": -17530233.98,
-        "total_benefit": -260805615.34,
-        "bc_ratio": -434.676
+        "comb_cmf": 0.82,
+        "crash_reduced": 95.89,
+        "total_cost": 1000000.0,
+        "ben_per_year": 5905250.87,
+        "total_benefit": 87855221.36,
+        "bc_ratio": 87.855
     },
     "exp_crashes": {
-        "Fatal": 0.8443,
-        "Serious": 2.955,
-        "Minor": 22.5845,
-        "Possible": 112.2891,
-        "PDO": 394.0672
+        "Fatal": 2.4258,
+        "Serious": 5.5255,
+        "Minor": 32.614,
+        "Possible": 111.0493,
+        "PDO": 381.1254
     },
     "crash_costs": {
         "Fatal": 2036913,
@@ -52,5 +35,19 @@
         "Minor": 198021,
         "Possible": 66461,
         "PDO": 28363
+    },
+    "severity_percents": {
+        "0": 0.005,
+        "1": 0.01,
+        "2": 0.061,
+        "3": 0.208,
+        "4": 0.715
+    },
+    "obs_crashes": {
+        "Fatal": 0.0,
+        "Serious": 5.0,
+        "Minor": 32.0,
+        "Possible": 97.0,
+        "PDO": 531.0
     }
 }
